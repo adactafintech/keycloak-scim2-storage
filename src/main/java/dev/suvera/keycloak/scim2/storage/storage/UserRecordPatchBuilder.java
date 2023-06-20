@@ -23,11 +23,13 @@ public class UserRecordPatchBuilder {
         addOperation(patchRequest, originalRecord.getLocale(), modifiedRecord.getLocale(), "locale");
         addOperation(patchRequest, originalRecord.getTimezone(), modifiedRecord.getTimezone(), "timezone");
         addOperation(patchRequest, originalRecord.getPassword(), modifiedRecord.getPassword(), "password");
+        addOperation(patchRequest, originalRecord.getPartyCode(), modifiedRecord.getPartyCode(), "partyCode");
 
         if (originalRecord.isActive() != modifiedRecord.isActive()) {
             patchRequest.addOperation(PatchOp.REPLACE, "active", modifiedRecord.isActive());
         }
 
+        addListValueOperations(patchRequest, originalRecord.getClaims(), modifiedRecord.getClaims(), t -> t.getAttributeKey(), v -> v.getAttributeValue(), "claims[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getEmails(), modifiedRecord.getEmails(), t -> t.getType(), v -> v.getValue(), "emails[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getPhoneNumbers(), modifiedRecord.getPhoneNumbers(), t -> t.getType(), v -> v.getValue(), "phoneNumbers[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getAddresses(), modifiedRecord.getAddresses(), t -> t, v -> v, "addreses[type eq %s]");
