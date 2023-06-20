@@ -286,12 +286,7 @@ public class ScimClient2 {
                 result.increaseAdded();
             }
         } else {
-            if (scimUser.getExternalId() == null) {
-                scimUser.setExternalId(user.getId());
-            } else {
-                updateUser(scimUser, user);
-            }
-            
+            updateUser(scimUser, user);            
             if (result != null) {
                 result.increaseUpdated();
             }
