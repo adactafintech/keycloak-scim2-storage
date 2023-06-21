@@ -1,11 +1,19 @@
 package dev.suvera.keycloak.scim2.storage.storage;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.function.Function;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import dev.suvera.scim2.schema.data.misc.PatchRequest;
 import dev.suvera.scim2.schema.data.user.UserRecord;
+import dev.suvera.scim2.schema.data.user.UserRecord.UserClaim;
 import dev.suvera.scim2.schema.enums.PatchOp;
+import dev.suvera.scim2.schema.data.ExtensionRecord;
 
 public class UserRecordPatchBuilder {
     private UserRecordPatchBuilder() { /* static class */ }
@@ -23,13 +31,71 @@ public class UserRecordPatchBuilder {
         addOperation(patchRequest, originalRecord.getLocale(), modifiedRecord.getLocale(), "locale");
         addOperation(patchRequest, originalRecord.getTimezone(), modifiedRecord.getTimezone(), "timezone");
         addOperation(patchRequest, originalRecord.getPassword(), modifiedRecord.getPassword(), "password");
-        addOperation(patchRequest, originalRecord.getPartyCode(), modifiedRecord.getPartyCode(), "partyCode");
 
         if (originalRecord.isActive() != modifiedRecord.isActive()) {
             patchRequest.addOperation(PatchOp.REPLACE, "active", modifiedRecord.isActive());
         }
 
-        addListValueOperations(patchRequest, originalRecord.getClaims(), modifiedRecord.getClaims(), t -> t.getAttributeKey(), v -> v.getAttributeValue(), "claims[type eq %s].value");
+        List<UserClaim> modifiedClaims = modifiedRecord.getClaims();
+
+        Collection<ExtensionRecord> records = originalRecord.getExtensions().values();
+        List<UserClaim> existingClaims = new ArrayList<UserClaim>();
+        String existingPartyCode = "";
+
+        ExtensionRecord existingClaimsRecord = records.iterator().next();
+
+        JsonNode existingPartyCodeRecord = existingClaimsRecord.asJsonNode().get("partyCode");
+        if(existingPartyCodeRecord != null){
+            existingPartyCode = existingPartyCodeRecord.textValue();
+        }
+
+        for (UserClaim modifiedClaim : modifiedClaims) {
+            String key = modifiedClaim.getAttributeKey();
+
+            JsonNode existingClaimsObject = existingClaimsRecord.asJsonNode().get("claims");
+            JsonNode claimValueNode = null;
+            String claimValue = "";
+
+            if(existingClaimsObject != null)
+            {
+                claimValueNode = existingClaimsObject.get(key);
+            }
+            
+            if(claimValueNode != null){
+                claimValue = claimValueNode.asText();
+            }
+
+            if(!claimValue.isEmpty()){
+                UserClaim claim = new UserClaim();
+                claim.setAttributeKey(key);
+                claim.setAttributeValue(claimValue);
+
+                existingClaims.add(claim);
+            }
+        }
+
+        /*
+        JsonNode originalRecordFields = record.asJsonNode().get("claims");
+        
+        if(originalRecordFields != null){
+            Iterator<Entry<String, JsonNode>> originalRecordFieldsIter =  originalRecordFields.fields();
+            while(originalRecordFieldsIter.hasNext())
+            {
+                Entry<String, JsonNode> claimField = originalRecordFieldsIter.next();
+
+                UserClaim claim = new UserClaim();
+                claim.setAttributeKey(claimField.getKey());
+                claim.setAttributeValue(claimField.getValue().toString());
+
+                existingClaims.add(claim);
+            }
+
+        }
+        */
+
+        addOperation(patchRequest, existingPartyCode, modifiedRecord.getPartyCode(), "partyCode");
+
+        addListValueOperations(patchRequest, existingClaims, modifiedRecord.getClaims(), t -> t.getAttributeKey(), v -> v.getAttributeValue(), "claims[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getEmails(), modifiedRecord.getEmails(), t -> t.getType(), v -> v.getValue(), "emails[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getPhoneNumbers(), modifiedRecord.getPhoneNumbers(), t -> t.getType(), v -> v.getValue(), "phoneNumbers[type eq %s].value");
         addListValueOperations(patchRequest, originalRecord.getAddresses(), modifiedRecord.getAddresses(), t -> t, v -> v, "addreses[type eq %s]");
