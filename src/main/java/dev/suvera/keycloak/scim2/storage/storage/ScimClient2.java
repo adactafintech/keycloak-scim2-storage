@@ -128,7 +128,7 @@ public class ScimClient2 {
         user.setUserName(userModel.getUsername());
 
         List<UserRecord.UserClaim> claims = new ArrayList<>();
-        List<String> defaultClaims = Arrays.asList("firstName", "lastName", "username", "email", "partyCode");
+        List<String> defaultClaims = Arrays.asList("firstName", "lastName", "username", "email");
 
         userModel.getAttributes().forEach((k, v) -> {
             UserRecord.UserClaim claim = new UserRecord.UserClaim();
@@ -155,11 +155,7 @@ public class ScimClient2 {
         }
         if (isAttributeNotNull(userModel, "honorificSuffix")) {
             name.setHonorificSuffix(userModel.getFirstAttribute("honorificSuffix"));
-        }
-        
-        if (isAttributeNotNull(userModel, "partyCode")) {
-            user.setPartyCode(userModel.getFirstAttribute("partyCode"));
-        }
+        }    
 
         user.setName(name);
 

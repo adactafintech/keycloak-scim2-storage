@@ -37,6 +37,14 @@ public class UserRecordPatchBuilder {
             patchRequest.addOperation(PatchOp.REPLACE, "active", modifiedRecord.isActive());
         }
 
+        UserClaim modifiedPartyCodeClaim = modifiedRecord.getClaims().stream()
+                .filter(claim -> "PartyCode".equalsIgnoreCase(claim.getAttributeKey()))
+                .findFirst()
+                .orElse(null);
+        String modifiedPartyCode = modifiedPartyCodeClaim != null
+                ? modifiedPartyCodeClaim.getAttributeValue()
+                : null;
+
         List<UserClaim> modifiedClaims = modifiedRecord.getClaims().stream()
                 .filter(uc -> !uc.getAttributeKey().equalsIgnoreCase("PartyCode"))
                 .collect(Collectors.toList());
@@ -65,7 +73,8 @@ public class UserRecordPatchBuilder {
             }
         }
 
-        addOperation(patchRequest, originalPartyCode, modifiedRecord.getPartyCode(), ScimConstant.URN_ADINSURE_USER + ":partyCode");
+        addOperation(patchRequest, originalPartyCode, modifiedPartyCode,
+                ScimConstant.URN_ADINSURE_USER + ":partyCode");
         addListValueOperations(patchRequest, originalClaims, modifiedClaims,
                 t -> t.getAttributeKey(), v -> v.getAttributeValue(),
                 ScimConstant.URN_ADINSURE_USER + ":claims[type eq %s].value");

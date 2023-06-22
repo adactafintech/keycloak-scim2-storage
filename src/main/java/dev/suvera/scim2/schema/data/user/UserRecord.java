@@ -31,7 +31,6 @@ public class UserRecord extends BaseRecord {
     private String timezone;
     private boolean active;
     private String password;
-    private String partyCode;
     private List<UserEmail> emails;
     private List<UserPhoneNumber> phoneNumbers;
     private List<UserIm> ims;
