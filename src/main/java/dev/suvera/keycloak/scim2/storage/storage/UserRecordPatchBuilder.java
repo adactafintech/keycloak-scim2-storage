@@ -23,8 +23,6 @@ public class UserRecordPatchBuilder {
     public static PatchRequest<UserRecord> buildPatchRequest(UserRecord modifiedRecord, UserRecord originalRecord) {
         PatchRequest<UserRecord> patchRequest = new PatchRequest<>(UserRecord.class);
 
-        // addOperation(patchRequest, originalRecord.getName(),
-        // modifiedRecord.getName().getGivenName(), "name");
         addOperation(patchRequest, originalRecord.getDisplayName(), modifiedRecord.getDisplayName(), "displayName");
         addOperation(patchRequest, originalRecord.getNickName(), modifiedRecord.getNickName(), "nickName");
         addOperation(patchRequest, originalRecord.getProfileUrl(), modifiedRecord.getProfileUrl(), "profileUrl");
@@ -34,20 +32,10 @@ public class UserRecordPatchBuilder {
                 "preferredLanguage");
         addOperation(patchRequest, originalRecord.getLocale(), modifiedRecord.getLocale(), "locale");
         addOperation(patchRequest, originalRecord.getTimezone(), modifiedRecord.getTimezone(), "timezone");
-        // addOperation(patchRequest, originalRecord.getPassword(),
-        // modifiedRecord.getPassword(), "password");
 
         if (originalRecord.isActive() != modifiedRecord.isActive()) {
             patchRequest.addOperation(PatchOp.REPLACE, "active", modifiedRecord.isActive());
         }
-
-        UserClaim modifiedPartyCodeClaim = modifiedRecord.getClaims().stream()
-                .filter(claim -> "PartyCode".equalsIgnoreCase(claim.getAttributeKey()))
-                .findFirst()
-                .orElse(null);
-        String modifiedPartyCode = modifiedPartyCodeClaim != null
-                ? modifiedPartyCodeClaim.getAttributeValue()
-                : null;
 
         List<UserClaim> modifiedClaims = modifiedRecord.getClaims().stream()
                 .filter(uc -> !uc.getAttributeKey().equalsIgnoreCase("PartyCode"))
@@ -77,7 +65,7 @@ public class UserRecordPatchBuilder {
             }
         }
 
-        addOperation(patchRequest, originalPartyCode, modifiedPartyCode, ScimConstant.URN_ADINSURE_USER + ":partyCode");
+        addOperation(patchRequest, originalPartyCode, modifiedRecord.getPartyCode(), ScimConstant.URN_ADINSURE_USER + ":partyCode");
         addListValueOperations(patchRequest, originalClaims, modifiedClaims,
                 t -> t.getAttributeKey(), v -> v.getAttributeValue(),
                 ScimConstant.URN_ADINSURE_USER + ":claims[type eq %s].value");
@@ -128,7 +116,7 @@ public class UserRecordPatchBuilder {
             if (isNullOrEmpty(val2)) {
                 // workaround for bug in MS SCIM , value must be provided so we are providing "
                 // "
-                patch.addOperation(PatchOp.REMOVE, path, " ");
+                patch.addOperation(PatchOp.REMOVE, path, val2);
             } else if (!val1.equals(val2)) {
                 patch.addOperation(PatchOp.REPLACE, path, val2);
             }
