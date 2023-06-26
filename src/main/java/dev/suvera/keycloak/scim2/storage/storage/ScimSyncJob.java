@@ -273,7 +273,7 @@ public class ScimSyncJob {
 
         List<String> externalIds = new ArrayList<String>(usernames.size());
         for (String username : usernames) {
-            String externalId = getExternalIdByUsername(realmModel, componentModel, username, scimClient);
+            String externalId = getExternalUserIdByUsername(realmModel, componentModel, username, scimClient);
 
             if (!(externalId == null || externalId.isEmpty())) {
                 externalIds.add(externalId);
@@ -310,8 +310,15 @@ public class ScimSyncJob {
         return usernames;
     }
 
-    private String getExternalIdByUsername(RealmModel realmModel, ComponentModel componentModel, String username,
+    private String getExternalUserIdByUsername(RealmModel realmModel, ComponentModel componentModel, String username,
             ScimClient2 scimClient) {
+
+        if (username == null) {
+            return null;
+        }
+
+        username = username.trim();
+
         UserModel userModel = session.userLocalStorage().getUserByUsername(realmModel, username);
 
         if (userModel == null) {
@@ -322,21 +329,7 @@ public class ScimSyncJob {
         String externalId = userAdapter.getExternalId();
 
         if (externalId == null || externalId.isEmpty()) {
-            externalId = tryToSetExternalUserIdFromOriginalUser(username, userAdapter, scimClient);
-        }
-
-        return externalId;
-    }
-
-    private String tryToSetExternalUserIdFromOriginalUser(String username, ScimUserAdapter userAdapter,
-            ScimClient2 scimClient) {
-        String externalId = null;
-
-        try {
-            UserRecord externalUserRecord = scimClient.findUserByUsername(username);
-            externalId = externalUserRecord.getId();
-            userAdapter.setExternalId(externalId);
-        } catch (ScimException e) {
+            externalId = scimClient.tryToSetExternalUserIdFromOriginalUser(username, userAdapter);
         }
 
         return externalId;
@@ -352,9 +345,9 @@ public class ScimSyncJob {
 
         List<SubstituteUser> substituteUsersWithExternalIds = new ArrayList<SubstituteUser>(substituteUsers.size());
         for (SubstituteUser substituteUser : substituteUsers) {
-            String userExternalId = getExternalIdByUsername(realmModel, componentModel, substituteUser.getUser(),
+            String userExternalId = getExternalUserIdByUsername(realmModel, componentModel, substituteUser.getUser(),
                     scimClient);
-            String substituteUserExternalId = getExternalIdByUsername(realmModel, componentModel,
+            String substituteUserExternalId = getExternalUserIdByUsername(realmModel, componentModel,
                     substituteUser.getSubstituteUser(), scimClient);
 
             if (!(userExternalId == null || userExternalId.isEmpty() || substituteUserExternalId == null
