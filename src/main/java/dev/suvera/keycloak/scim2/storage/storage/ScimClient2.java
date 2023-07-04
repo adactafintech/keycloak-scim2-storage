@@ -513,14 +513,17 @@ public class ScimClient2 {
             return;
         }
 
-        String id = tryToSetExternalGroupIdFromOriginalGroup(groupModel.getGroupModel().getName(), groupModel);
+        String externalId = groupModel.getExternalId();
+        if (externalId == null || externalId.isEmpty()) {
+            externalId = tryToSetExternalGroupIdFromOriginalGroup(groupModel.getGroupModel().getName(), groupModel);
+        }
 
-        if (id == null) {
+        if (externalId == null) {
             log.infof("Group %s does not exist in the SCIM2 provider", groupModel.getGroupModel().getName());
             return;
         }
 
-        GroupRecord grp = scimService.readGroup(id);
+        GroupRecord grp = scimService.readGroup(externalId);
         updateGroupName(groupModel, grp);
         updateGroup(groupModel, grp, groupManagersExternalIds, substituteUsers);
     }
