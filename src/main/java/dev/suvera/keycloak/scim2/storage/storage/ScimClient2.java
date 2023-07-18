@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 
+import dev.suvera.keycloak.scim2.storage.shared.PluginSettings;
 import dev.suvera.scim2.client.Scim2Client;
 import dev.suvera.scim2.client.Scim2ClientBuilder;
 import dev.suvera.scim2.schema.ScimConstant;
@@ -43,6 +44,7 @@ import dev.suvera.scim2.schema.data.user.UserRecord.UserName;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserPhoneNumber;
 import dev.suvera.scim2.schema.enums.PatchOp;
 import dev.suvera.scim2.schema.ex.ScimException;
+import dev.suvera.keycloak.scim2.storage.shared.PluginSettings;
 import liquibase.pro.packaged.nu;
 
 /**
@@ -464,8 +466,11 @@ public class ScimClient2 {
 
         if (externalGroupId != null) {
             PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
-            addPatchGroupManagers(patchRequest, groupManagersExternalIds);
-            addPatchSubstituteUsers(patchRequest, substituteUsers);
+
+            if (PluginSettings.ManageGroupManagersAndSubstituteUsers) {
+                addPatchGroupManagers(patchRequest, groupManagersExternalIds);
+                addPatchSubstituteUsers(patchRequest, substituteUsers);
+            }
 
             PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
 
@@ -509,6 +514,7 @@ public class ScimClient2 {
 
     public void updateGroup(ScimGroupAdapter groupModel, List<String> groupManagersExternalIds,
             List<SubstituteUser> substituteUsers) throws ScimException {
+
         if (scimService == null) {
             return;
         }
@@ -545,8 +551,11 @@ public class ScimClient2 {
             groupMember.setDisplay(userModel.getUsername());
             groupMember.setValue(userModel.getExternalId());
             patchRequest.addOperation(PatchOp.ADD, "members", Arrays.asList(groupMember));
-            addPatchGroupManagers(patchRequest, groupManagersExternalIds);
-            addPatchSubstituteUsers(patchRequest, substituteUsers);
+
+            if (PluginSettings.ManageGroupManagersAndSubstituteUsers) {
+                addPatchGroupManagers(patchRequest, groupManagersExternalIds);
+                addPatchSubstituteUsers(patchRequest, substituteUsers);
+            }
 
             PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
             return response.getStatus() == 200;
@@ -571,8 +580,11 @@ public class ScimClient2 {
                     PatchOp.REMOVE,
                     String.format("members[value eq \"%s\"]", externalUserId),
                     null);
-            addPatchGroupManagers(patchRequest, groupManagersExternalIds);
-            addPatchSubstituteUsers(patchRequest, substituteUsers);
+
+            if (PluginSettings.ManageGroupManagersAndSubstituteUsers) {
+                addPatchGroupManagers(patchRequest, groupManagersExternalIds);
+                addPatchSubstituteUsers(patchRequest, substituteUsers);
+            }
 
             PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
             return response.getStatus() == 200;

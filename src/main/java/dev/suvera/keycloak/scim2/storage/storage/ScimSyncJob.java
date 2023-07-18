@@ -19,8 +19,10 @@ import org.keycloak.models.jpa.entities.ComponentEntity;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import dev.suvera.keycloak.scim2.storage.jpa.ScimSyncJobQueue;
+import dev.suvera.keycloak.scim2.storage.shared.PluginSettings;
 import dev.suvera.scim2.schema.data.user.UserRecord;
 import dev.suvera.scim2.schema.ex.ScimException;
+import liquibase.pro.packaged.nu;
 
 /**
  * author: suvera
@@ -250,11 +252,13 @@ public class ScimSyncJob {
         ScimGroupAdapter scimGroupAdapter = new ScimGroupAdapter(session, groupModel, realmModel.getId(),
                 componentModel.getId());
 
-        List<String> groupManagersExternalIds = getGroupManagersExternalIds(realmModel, componentModel, groupModel,
-                scimClient);
+        List<String> groupManagersExternalIds = PluginSettings.ManageGroupManagersAndSubstituteUsers
+                ? getGroupManagersExternalIds(realmModel, componentModel, groupModel, scimClient)
+                : null;
 
-        List<SubstituteUser> substituteUsers = getSubstituteUsersExternalIds(realmModel, componentModel, groupModel,
-                scimClient);
+        List<SubstituteUser> substituteUsers = PluginSettings.ManageGroupManagersAndSubstituteUsers
+                ? getSubstituteUsersExternalIds(realmModel, componentModel, groupModel, scimClient)
+                : null;
 
         if (updateOnly) {
             scimClient.updateGroup(scimGroupAdapter, groupManagersExternalIds, substituteUsers);
@@ -492,11 +496,13 @@ public class ScimSyncJob {
 
         ScimClient2 scimClient = ScimClient2Factory.getClient(componentModel);
 
-        List<String> groupManagersExternalIds = getGroupManagersExternalIds(realmModel, componentModel, groupModel,
-                scimClient);
+        List<String> groupManagersExternalIds = PluginSettings.ManageGroupManagersAndSubstituteUsers
+                ? getGroupManagersExternalIds(realmModel, componentModel, groupModel, scimClient)
+                : null;
 
-        List<SubstituteUser> substituteUsers = getSubstituteUsersExternalIds(realmModel, componentModel, groupModel,
-                scimClient);
+        List<SubstituteUser> substituteUsers = PluginSettings.ManageGroupManagersAndSubstituteUsers
+                ? getSubstituteUsersExternalIds(realmModel, componentModel, groupModel, scimClient)
+                : null;
 
         if (join) {
             scimClient.joinGroup(scimGroupAdapter, scimUserAdapter, groupManagersExternalIds, substituteUsers);
