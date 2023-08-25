@@ -334,7 +334,7 @@ public class ScimSyncJob {
         }
 
         if (userModel == null) {
-            log.info("User cannot be found. Canceling leave/group action.");
+            log.infof("User with id %s cannot be found. Canceling leave/group action.", job.getUserId());
             return new LeaveOrJoinGroupResult(false, null, null, null, null);
         }
 
