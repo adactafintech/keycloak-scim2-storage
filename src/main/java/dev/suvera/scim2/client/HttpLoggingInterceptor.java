@@ -28,12 +28,12 @@ public class HttpLoggingInterceptor implements Interceptor {
         Request request = chain.request();
 
         long t1 = System.nanoTime();
-        log.debugf("\nOkHttp [%s] Sending %s request %s on %s%n\n%s\nRequestBody:%s", purpose, request.method(), request.url(), chain.connection(), request.headers(), request.body());
+        log.debugf("OkHttp [%s] Sending %s request %s on %s%n\n%s\nRequestBody:%s", purpose, request.method(), request.url(), chain.connection(), request.headers(), request.body());
 
         Response response = chain.proceed(request);
 
         long t2 = System.nanoTime();
-        log.debugf("\nOkHttp [%s] Received response for %s in %.1fms%n\n%s\nResponseBody:%s", purpose, response.request().url(), (t2 - t1) / 1e6d, response.headers(), response.body());
+        log.debugf("OkHttp [%s] Received response for %s in %.1fms%n\n%s\nResponseBody:%s", purpose, response.request().url(), (t2 - t1) / 1e6d, response.headers(), response.body());
 
         return response;
     }
