@@ -213,7 +213,7 @@ public class ScimSyncJob {
             throws ScimException {
         if (componentModel == null) {
             if (job.getComponentId() == null) {
-                log.error("Appropriate componsent is needed to delete user.");
+                log.error("Appropriate component is needed to delete user.");
                 return;
             }
 
