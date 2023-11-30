@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
 import org.keycloak.component.ComponentModel;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
@@ -39,12 +39,12 @@ public class ScimSyncRunner {
 
             List<String> ldapComponentModels = ComponentModelUtils
                     .getLDAPComponentsWithScimEventsEnabled(sessionFactory, realmId)
-                    .collect(Collectors.toUnmodifiableList());
+                    .collect(Collectors.toList());
 
             RealmModel realm = kcSession.realms().getRealm(realmId);
             Stream<UserModel> users = kcSession
-                    .userLocalStorage()
-                    .getUsersStream(realm)
+                    .users()
+                    .searchForUserStream(realm, UserModel.INCLUDE_SERVICE_ACCOUNT)
                     .filter(u -> u.getFederationLink() != null
                             && (u.getFederationLink().equals(model.getId()))
                             || ldapComponentModels.stream().anyMatch(l -> l.equals(u.getFederationLink())));

@@ -60,10 +60,10 @@ public class SkssStorageProvider implements UserStorageProvider, UserRegistratio
     }
 
     protected UserModel createAdapter(RealmModel realm, String username) {
-        UserModel local = session.userLocalStorage().getUserByUsername(realm, username);
+        UserModel local = session.users().getUserByUsername(realm, username);
         if (local == null) {
             log.info("Adding user " + username);
-            local = session.userLocalStorage().addUser(realm, username);
+            local = session.users().addUser(realm, username);
             local.setFederationLink(model.getId());
         }
 
