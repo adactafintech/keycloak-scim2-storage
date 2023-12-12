@@ -3,6 +3,7 @@ package dev.suvera.keycloak.scim2.storage.storage;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
+import org.keycloak.storage.UserStoragePrivateUtil;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserRegistrationProvider;
 
@@ -63,7 +64,7 @@ public class SkssStorageProvider implements UserStorageProvider, UserRegistratio
         UserModel local = session.users().getUserByUsername(realm, username);
         if (local == null) {
             log.info("Adding user " + username);
-            local = session.users().addUser(realm, username);
+            local = UserStoragePrivateUtil.userLocalStorage(session).addUser(realm, username);
             local.setFederationLink(model.getId());
         }
 
