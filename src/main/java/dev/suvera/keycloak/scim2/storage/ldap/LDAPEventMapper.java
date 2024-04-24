@@ -89,8 +89,12 @@ public class LDAPEventMapper implements LDAPStorageMapper {
 
     @Override
     public Set<String> mandatoryAttributeNames() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'mandatoryAttributeNames'");
+    }
+
+    @Override
+    public Set<String> getUserAttributes() {
+        throw new UnsupportedOperationException("Unimplemented method 'getUserAttributes'");
     }
     
 }
