@@ -39,7 +39,7 @@ public class GroupMigrationHandler {
             String groupName = representationJson.get("name").asText();
             GroupModel groupModel = session
                     .groups()
-                    .searchForGroupByNameStream(realmModel, groupName, null, null)
+                    .searchForGroupByNameStream(realmModel, groupName, true, null, null)
                     .findFirst()
                     .orElse(null);
 

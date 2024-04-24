@@ -2,6 +2,7 @@ package dev.suvera.keycloak.scim2.storage.storage;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,7 +45,7 @@ public class ScimSyncRunner {
             RealmModel realm = kcSession.realms().getRealm(realmId);
             Stream<UserModel> users = kcSession
                     .users()
-                    .searchForUserStream(realm, UserModel.INCLUDE_SERVICE_ACCOUNT)
+                    .searchForUserStream(realm, Map.of(UserModel.ENABLED, "true"))
                     .filter(u -> u.getFederationLink() != null
                             && (u.getFederationLink().equals(model.getId()))
                             || ldapComponentModels.stream().anyMatch(l -> l.equals(u.getFederationLink())));
