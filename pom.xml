@@ -263,10 +263,7 @@
             </build>
         </profile>
         <profile>
-            <id>keycloak-20</id>
-            <properties>
-                <keycloak.version>20.0.3</keycloak.version>
-            </properties>
+            <id>transform-jakarta</id>
             <build>
                 <plugins>
                     <plugin>
@@ -274,7 +271,7 @@
                         <artifactId>transformer-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>transform</id>
+                                <id>transform-source</id>
                                 <phase>process-sources</phase>
                                 <goals>
                                     <goal>transform</goal>
@@ -287,10 +284,30 @@
                                     </rules>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>transform-tests</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>transform</goal>
+                                </goals>
+                                <configuration>
+                                    <transformDirectory>src/test</transformDirectory>
+                                    <rules>
+                                        <jakartaDefaults>true</jakartaDefaults>
+                                        <invert>true</invert>
+                                    </rules>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>keycloak-20</id>
+            <properties>
+                <keycloak.version>20.0.3</keycloak.version>
+            </properties>
         </profile>
         <profile>
             <id>keycloak-21</id>
