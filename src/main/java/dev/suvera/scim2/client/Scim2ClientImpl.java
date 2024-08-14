@@ -210,7 +210,7 @@ public class Scim2ClientImpl implements Scim2Client {
         try {
             response = call.execute();
         } catch (IOException e) {
-            throw new ScimException("Could not send HTTP request to scim2 service", e);
+            throw new ScimException("Could not send HTTP request to scim2 service", e); // here
         }
 
         return response;
@@ -343,7 +343,7 @@ public class Scim2ClientImpl implements Scim2Client {
             try {
                 patchResponse.setResource(mapToObject(response.getBody(), request.getRecordType()));
             } catch (ScimException e) {
-                log.error("Patch request has no Resource received. {}", e.getMessage());
+                log.error("Patch request has no Resource received. {}", e);
             }
         }
 
