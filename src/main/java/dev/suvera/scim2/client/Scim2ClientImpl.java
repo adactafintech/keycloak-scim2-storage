@@ -210,7 +210,7 @@ public class Scim2ClientImpl implements Scim2Client {
         try {
             response = call.execute();
         } catch (IOException e) {
-            throw new ScimException("Could not send HTTP request to scim2 service", e); // here
+            throw new ScimException("Could not send HTTP request to scim2 service", e);
         }
 
         return response;
