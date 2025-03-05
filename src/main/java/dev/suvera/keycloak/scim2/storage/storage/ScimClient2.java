@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.mail.Session;
@@ -57,6 +58,8 @@ public class ScimClient2 {
     private Scim2Client scimService = null;
     private ScimException scimException = null;
 
+    public int clientHashCode = -1;
+
     public ScimClient2(ComponentModel componentModel) {
         this.componentModel = componentModel;
 
@@ -66,6 +69,8 @@ public class ScimClient2 {
         String password = componentModel.get("password");
         String clientId = componentModel.get("clientId");
         String clientSecret = componentModel.get("clientSecret");
+
+        this.clientHashCode = getClientHashFromModel(componentModel);
 
         log.info("SCIM 2.0 endPoint: " + endPoint);
         endPoint = StringUtils.stripEnd(endPoint, " /");
@@ -111,6 +116,17 @@ public class ScimClient2 {
         } catch (ScimException e) {
             scimException = e;
         }
+    }
+
+    public static int getClientHashFromModel(ComponentModel componentModel) {
+        String endPoint = componentModel.get("endPoint");
+        String authorityUrl = componentModel.get("authorityUrl");
+        String username = componentModel.get("username");
+        String password = componentModel.get("password");
+        String clientId = componentModel.get("clientId");
+        String clientSecret = componentModel.get("clientSecret");
+
+        return Objects.hash(endPoint, authorityUrl, username, password, clientId, clientSecret);
     }
 
     private String inputStreamToString(InputStream is) {
