@@ -322,20 +322,6 @@
                                     </rules>
                                 </configuration>
                             </execution>
-                            <execution>
-                                <id>transform-tests</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>transform</goal>
-                                </goals>
-                                <configuration>
-                                    <transformDirectory>src/test</transformDirectory>
-                                    <rules>
-                                        <jakartaDefaults>true</jakartaDefaults>
-                                        <invert>true</invert>
-                                    </rules>
-                                </configuration>
-                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
