@@ -1,8 +1,7 @@
 package dev.suvera.helpers;
 
-import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.keycloak.test.FluentTestsHelper;
+import org.keycloak.quickstart.test.FluentTestsHelper;
 
 public class FluentTestsHelperWithUserUpdate extends FluentTestsHelper {
     public FluentTestsHelperWithUserUpdate(String keycloakBaseUrl, String adminUserName, String adminPassword, String adminRealm, String adminClient, String testRealm) {
