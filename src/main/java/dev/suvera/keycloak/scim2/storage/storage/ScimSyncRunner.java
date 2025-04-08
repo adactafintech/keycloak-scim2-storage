@@ -45,12 +45,12 @@ public class ScimSyncRunner {
         int batchNumber = 0;
         List<UserModel> users;
         do {
-            log.infof("Fetching batch %d of users...", batchNumber+1);
+            log.infof("Fetching batch %d of users...", batchNumber);
             users = getBatchOfUsers(realm, ldapComponentModels, 1000, batchNumber);
-            log.infof("Fetched %d users in batch %d.", users.size(), batchNumber+1);
+            log.infof("Fetched %d users in batch %d.", users.size(), batchNumber);
 
             users.forEach(user -> executeSyncUserJob(user, realmId, result));
-            log.infof("Executed synchronization of users for batch %d.", batchNumber+1);
+            log.infof("Executed synchronization of users for batch %d.", batchNumber);
 
             batchNumber++;
         } while (!users.isEmpty());
