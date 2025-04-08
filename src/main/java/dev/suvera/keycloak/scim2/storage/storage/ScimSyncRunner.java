@@ -108,21 +108,24 @@ public class ScimSyncRunner {
     private SynchronizationResult callSyncJobs() {
         SynchronizationResult result = new SynchronizationResult();
 
-        List<ScimSyncJobQueue> jobs = new ArrayList<>();
-        do {
-            KeycloakModelUtils.runJobInTransaction(sessionFactory, kcSession -> {
-                EntityManager em = kcSession.getProvider(JpaConnectionProvider.class).getEntityManager();
-                log.infof("Fetching new batch of pending jobs...");
-                em.createNamedQuery("getPendingJobs", ScimSyncJobQueue.class)
-                    .setMaxResults(1000)
-                    .getResultStream()
-                    .forEach(jobs::add);
-            });
-    
+        for (List<ScimSyncJobQueue> jobs = fetchJobs(); !jobs.isEmpty(); jobs = fetchJobs()) {
             jobs.forEach(job -> executeJob(job, result));
-        } while(!jobs.isEmpty());
+        }
 
         return result;
+    }
+
+    private List<ScimSyncJobQueue> fetchJobs() {
+        List<ScimSyncJobQueue> jobs = new ArrayList<>();
+        KeycloakModelUtils.runJobInTransaction(sessionFactory, kcSession -> {
+            EntityManager em = kcSession.getProvider(JpaConnectionProvider.class).getEntityManager();
+            log.infof("Fetching new batch of pending jobs...");
+            em.createNamedQuery("getPendingJobs", ScimSyncJobQueue.class)
+                .setMaxResults(1000)
+                .getResultStream()
+                .forEach(jobs::add);
+        });
+        return jobs;
     }
 
     private void executeJob(ScimSyncJobQueue job, SynchronizationResult result) {
