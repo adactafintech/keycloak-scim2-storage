@@ -39,7 +39,7 @@ import jakarta.ws.rs.core.Response;
 
 @RunWith(Arquillian.class)
 public class UserSyncTests {
-    public static String KEYCLOAK_VERSION = "24.0.4";
+    public static String KEYCLOAK_VERSION = "26.1.3";
     static {
         Properties properties = new Properties();
         try (InputStream input = UserSyncTests.class.getClassLoader().getResourceAsStream("test.properties")) {
@@ -55,16 +55,18 @@ public class UserSyncTests {
     public static final int KEYCLOAK_PORT = 8080;
     public static final String PLUGIN_NAME = "scim2-provisioning-keycloak-%s-jar-with-dependencies.jar".formatted(KEYCLOAK_VERSION);
     public static final int MOCK_SERVER_PORT = 8081;
+    public static final int DEBUG_PORT = 8787;
 
     private static FluentTestsHelperWithUserUpdate testsHelper;
     private static ClientAndServer mockServer;
     
     @ClassRule
     public static GenericContainer<?> keycloak = new GenericContainer<>("quay.io/keycloak/keycloak:" + KEYCLOAK_VERSION)
-        .withExposedPorts(KEYCLOAK_PORT)
-        .withCommand("start-dev")
+        .withExposedPorts(KEYCLOAK_PORT, DEBUG_PORT)
+        .withCommand("start-dev --debug")
         .withEnv("KEYCLOAK_ADMIN", "admin")
         .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
+        .withEnv("DEBUG_PORT", "*:" + DEBUG_PORT)
         .withFileSystemBind("./target/" + PLUGIN_NAME, "/opt/keycloak/providers/" + PLUGIN_NAME, BindMode.READ_ONLY);
 
     @BeforeClass
