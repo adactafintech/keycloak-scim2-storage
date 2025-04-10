@@ -11,7 +11,6 @@ import jakarta.persistence.EntityManager;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
-import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -39,14 +38,11 @@ public class ScimSyncRunner {
                 .getLDAPComponentsWithScimEventsEnabled(sessionFactory, realmId)
                 .collect(Collectors.toList());
 
-        KeycloakSession session = sessionFactory.create();
-        RealmModel realm = session.realms().getRealm(realmId);
-
         int batchNumber = 0;
         List<UserModel> users;
         do {
             log.infof("Fetching batch %d of users...", batchNumber);
-            users = getBatchOfUsers(realm, ldapComponentModels, 1000, batchNumber);
+            users = getBatchOfUsers(realmId, ldapComponentModels, 1000, batchNumber);
             log.infof("Fetched %d users in batch %d.", users.size(), batchNumber);
 
             users.forEach(user -> executeSyncUserJob(user, realmId, result));
@@ -66,10 +62,11 @@ public class ScimSyncRunner {
         return result;
     }
 
-    private List<UserModel> getBatchOfUsers(RealmModel realm, List<String> ldapComponentModels, int batchSize,
+    private List<UserModel> getBatchOfUsers(String realmId, List<String> ldapComponentModels, int batchSize,
             int batchNumber) {
         List<UserModel> users = new ArrayList<>();
         KeycloakModelUtils.runJobInTransaction(sessionFactory, kcSession -> {
+            RealmModel realm = kcSession.realms().getRealm(realmId);
             kcSession.getContext().setRealm(realm);
             kcSession.users()
                     .searchForUserStream(realm, Map.of(UserModel.ENABLED, "true"))
