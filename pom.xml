@@ -328,18 +328,6 @@
             </build>
         </profile>
         <profile>
-            <id>keycloak-20</id>
-            <properties>
-                <keycloak.version>20.0.3</keycloak.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>keycloak-21</id>
-            <properties>
-                <keycloak.version>21.1.1</keycloak.version>
-            </properties>
-        </profile>
-        <profile>
             <id>keycloak-24</id>
             <properties>
                 <keycloak.version>24.0.4</keycloak.version>
