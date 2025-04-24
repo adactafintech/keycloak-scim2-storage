@@ -6,6 +6,8 @@ import static org.mockserver.model.HttpResponse.response;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Properties;
 
 import org.jboss.arquillian.junit.Arquillian;
@@ -25,6 +27,7 @@ import org.mockserver.matchers.MatchType;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.MediaType;
 import org.mockserver.verify.VerificationTimes;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 
@@ -56,6 +59,7 @@ public class UserSyncTests {
     public static final String PLUGIN_NAME = "scim2-provisioning-keycloak-%s-jar-with-dependencies.jar".formatted(KEYCLOAK_VERSION);
     public static final int MOCK_SERVER_PORT = 8081;
     public static final int DEBUG_PORT = 8787;
+    public static final String DOCKER_HOST = DockerClientFactory.instance().dockerHostIpAddress();
 
     private static FluentTestsHelperWithUserUpdate testsHelper;
     private static ClientAndServer mockServer;
@@ -67,7 +71,8 @@ public class UserSyncTests {
         .withEnv("KEYCLOAK_ADMIN", "admin")
         .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
         .withEnv("DEBUG_PORT", "*:" + DEBUG_PORT)
-        .withFileSystemBind("./target/" + PLUGIN_NAME, "/opt/keycloak/providers/" + PLUGIN_NAME, BindMode.READ_ONLY);
+        .withFileSystemBind("./target/" + PLUGIN_NAME, "/opt/keycloak/providers/" + PLUGIN_NAME, BindMode.READ_ONLY)
+        .withStartupTimeout(Duration.ofMinutes(3));
 
     @BeforeClass
     public static void beforeTestClass() throws IOException {
@@ -87,7 +92,7 @@ public class UserSyncTests {
     }
 
     @Before
-    public void beforeTest() throws IOException {
+    public void beforeTest() throws IOException, InterruptedException {
         testsHelper.importTestRealm("/test-realm.json");
         mockServer = initMockServer(false);
     }
@@ -102,18 +107,24 @@ public class UserSyncTests {
     }
 
     @Test
-    public void createNewUser() throws JsonProcessingException, ClientRegistrationException, InterruptedException {
+    public void createNewUser() throws JsonProcessingException, ClientRegistrationException, InterruptedException, IOException {
+        System.out.println("createNewUser started: %s".formatted(LocalDateTime.now()));
+
         addProvider();
         String username = "federated-user";
         testsHelper.createTestUser(username, "test-password");
 
         verifyUserCreate(mockServer, username, VerificationTimes.once());
+
+        System.out.println("createNewUser finished: %s".formatted(LocalDateTime.now()));
     }
 
     @Test
     public void updateUser() throws ClientRegistrationException, InterruptedException, IOException {
+        System.out.println("updateUser started: %s".formatted(LocalDateTime.now()));
+
         mockServer.stop();
-        ClientAndServer mockServerUserExists = initMockServer(true);
+        mockServer = initMockServer(true);
 
         addProvider();
         String username = "federated-user";
@@ -122,39 +133,49 @@ public class UserSyncTests {
 
         testsHelper.updateUserEmail(username, email);
 
-        verifyUserEmailPatch(mockServerUserExists, "id-" + username, email, VerificationTimes.once());
-        mockServerUserExists.stop();
+        verifyUserEmailPatch(mockServer, "id-" + username, email, VerificationTimes.once());
+
+        System.out.println("updateUser finished: %s".formatted(LocalDateTime.now()));
     }
 
     @Test
     public void patchUser() throws ClientRegistrationException, InterruptedException, IOException {
+        System.out.println("patchUser started: %s".formatted(LocalDateTime.now()));
+
         mockServer.stop();
-        ClientAndServer mockServerUserExists = initMockServer(true);
+        mockServer = initMockServer(true);
 
         addProvider();
         String username = "federated-user";
         testsHelper.createTestUser(username, "passa");
 
-        verifyUserPatch(mockServerUserExists, "id-" + username, VerificationTimes.once());
-        mockServerUserExists.stop();
+        verifyUserPatch(mockServer, "id-" + username, VerificationTimes.once());
+
+        System.out.println("patchUser finished: %s".formatted(LocalDateTime.now()));
     }
 
     @Test
     public void deleteUser() throws JsonProcessingException, ClientRegistrationException, InterruptedException {
+        System.out.println("deleteUser started: %s".formatted(LocalDateTime.now()));
+
         addProvider();
         String username = "federated-user";
         testsHelper.createTestUser(username, "pass");
 
         // wait for the user to sync
-        Thread.sleep(2000);
+        Thread.sleep(5000);
 
         testsHelper.deleteTestUser(username);
 
         verifyUserDelete(mockServer, "id-" + username, VerificationTimes.once());
+
+        System.out.println("deleteUser finished: %s".formatted(LocalDateTime.now()));
     }
 
     @Test
     public void syncChangedUsers() throws ClientRegistrationException, IOException, InterruptedException {
+        System.out.println("syncChangedUsers started: %s".formatted(LocalDateTime.now()));
+
         String notFederated, created, patched;
         notFederated = "not-federated-user";
         created = "federated-user-1";
@@ -173,18 +194,21 @@ public class UserSyncTests {
         testsHelper.createTestUser(patched, "pass");
 
         // wait for the user to try sync
-        Thread.sleep(4000);
+        Thread.sleep(5000);
         
-        ClientAndServer mockServerUserExists = initMockServer(true);
+        mockServer = initMockServer(true);
         testsHelper.getTestRealmResource().userStorage().syncUsers(providerId, "triggerChangedUsersSync");
 
-        verifyUserCreate(mockServerUserExists, created, VerificationTimes.never());
-        verifyUserPatch(mockServerUserExists, "id-" + patched, VerificationTimes.atLeast(1));
-        mockServerUserExists.stop();
+        verifyUserCreate(mockServer, created, VerificationTimes.never());
+        verifyUserPatch(mockServer, "id-" + patched, VerificationTimes.atLeast(1));
+
+        System.out.println("syncChangedUsers finished: %s".formatted(LocalDateTime.now()));
     }
 
     @Test
     public void syncAllUsers() throws ClientRegistrationException, InterruptedException, IOException {
+        System.out.println("syncAllUsers started: %s".formatted(LocalDateTime.now()));
+
         String notFederated, created, created2;
         notFederated = "not-federated-user";
         created = "federated-user-1";
@@ -203,14 +227,15 @@ public class UserSyncTests {
         testsHelper.createTestUser(created2, "pass");
 
         // wait for the user to try sync
-        Thread.sleep(4000);
+        Thread.sleep(5000);
 
-        ClientAndServer mockServerUserExists = initMockServer(false);
+        mockServer = initMockServer(false);
         testsHelper.getTestRealmResource().userStorage().syncUsers(providerId, "triggerFullSync");
         
-        verifyUserCreate(mockServerUserExists, created, VerificationTimes.once());
-        verifyUserCreate(mockServerUserExists, created2, VerificationTimes.atLeast(1));
-        mockServerUserExists.stop();
+        verifyUserCreate(mockServer, created, VerificationTimes.once());
+        verifyUserCreate(mockServer, created2, VerificationTimes.atLeast(1));
+
+        System.out.println("syncAllUsers ended: %s".formatted(LocalDateTime.now()));
     }
 
     private String addProvider() throws JsonProcessingException, ClientRegistrationException {
@@ -229,7 +254,7 @@ public class UserSyncTests {
         testsHelper.createTestUser(username, password);
         
         provider.setConfig(new MultivaluedHashMap<String, String>() {{
-            putSingle("endPoint", "http://host.docker.internal:" + MOCK_SERVER_PORT);
+            putSingle("endPoint", "http://%s:%s".formatted(DOCKER_HOST, MOCK_SERVER_PORT));
             putSingle("authorityUrl",  "http://localhost:%d/realms/test".formatted(KEYCLOAK_PORT));
             putSingle("username", username);
             putSingle("password", password);
@@ -242,7 +267,7 @@ public class UserSyncTests {
         return testsHelper.getCreatedId(response);
     }
 
-    private ClientAndServer initMockServer(boolean returnsListResponseWithUser) throws IOException {
+    private ClientAndServer initMockServer(boolean returnsListResponseWithUser) throws IOException, InterruptedException {
         ClientAndServer mockServer = ClientAndServer.startClientAndServer(MOCK_SERVER_PORT);
 
         mockServer
@@ -289,18 +314,18 @@ public class UserSyncTests {
                         .withStatusCode(200)
                         .withBody(loadStringResource("/list-response-with-user.json"), MediaType.APPLICATION_JSON)
                 );
+        } else {
+            mockServer
+                .when(
+                    request()
+                    .withMethod("GET")
+                    .withPath("/Users"))
+                .respond(
+                    response()
+                        .withStatusCode(200)
+                        .withBody(loadStringResource("/empty-list-response.json"), MediaType.APPLICATION_JSON)
+                );
         }
-
-        mockServer
-            .when(
-                request()
-                .withMethod("GET")
-                .withPath("/Users"))
-            .respond(
-                response()
-                    .withStatusCode(200)
-                    .withBody(loadStringResource("/empty-list-response.json"), MediaType.APPLICATION_JSON)
-            );
 
         mockServer
             .when(
@@ -329,12 +354,14 @@ public class UserSyncTests {
                     .withBody(loadStringResource("/user-resource.json"), MediaType.APPLICATION_JSON)
             );
 
+        // wait for the mock server to start processing
+        Thread.sleep(2000);
         return mockServer;
     }
 
     private void verifyUserCreate(ClientAndServer mockServer, String username, VerificationTimes times) throws InterruptedException {
         // wait for the request to finish
-        Thread.sleep(2000);
+        Thread.sleep(5000);
         mockServer.verify(
             request()
             .withMethod("POST")
@@ -351,7 +378,7 @@ public class UserSyncTests {
 
     private void verifyUserDelete(ClientAndServer mockServer, String userId, VerificationTimes times) throws InterruptedException {
         // wait for the request to finish
-        Thread.sleep(2000);
+        Thread.sleep(5000);
         mockServer.verify(
             request()
             .withMethod("DELETE")
@@ -362,7 +389,7 @@ public class UserSyncTests {
 
     private void verifyUserEmailPatch(ClientAndServer mockServer, String userId, String email, VerificationTimes times) throws InterruptedException {
         // wait for the request to finish
-        Thread.sleep(4000);
+        Thread.sleep(5000);
         mockServer.verify(
             request()
             .withMethod("PATCH")
@@ -379,7 +406,7 @@ public class UserSyncTests {
 
     private void verifyUserPatch(ClientAndServer mockServer, String userId, VerificationTimes times) throws InterruptedException {
         // wait for the request to finish
-        Thread.sleep(4000);
+        Thread.sleep(5000);
         mockServer.verify(
             request()
             .withMethod("PATCH")
