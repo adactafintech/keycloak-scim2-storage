@@ -432,6 +432,8 @@ public class ScimClient2 {
         GroupRecord groupRecord = new GroupRecord();
         groupRecord.setDisplayName(groupModel.getGroupModel().getName());
 
+        //groupModel.getGroupModel().getAttributes();
+        
         groupRecord = scimService.createGroup(groupRecord);
 
         groupModel.setExternalId(groupRecord.getId());

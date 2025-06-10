@@ -163,8 +163,12 @@ public class ScimSyncJob {
         scimClient.createOrUpdateUser(scimUserAdapter, result);
 
         if (result != null) {
-            List<GroupModel> userGroups = userModel.getGroupsStream().collect(Collectors.toList());
+            // userModel.getGroupsStream().forEach(group -> {
+            //     enquerer.enqueueGroupJoinJob(realmModel.getId(), group.getId(), userModel.getId());
+            // });
 
+            List<GroupModel> userGroups = userModel.getGroupsStream().collect(Collectors.toList());
+            
             session.groups().getGroupsStream(realmModel).forEach(group -> {
                 if (userGroups.stream().anyMatch(userGroup -> userGroup.getId().equals(group.getId()))) {
                     enquerer.enqueueGroupJoinJob(realmModel.getId(), group.getId(), userModel.getId());
