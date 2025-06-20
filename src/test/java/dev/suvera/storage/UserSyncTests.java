@@ -42,7 +42,7 @@ import jakarta.ws.rs.core.Response;
 
 @RunWith(Arquillian.class)
 public class UserSyncTests {
-    public static String KEYCLOAK_VERSION = "26.1.3";
+    public static String KEYCLOAK_VERSION = "26.2.5";
     static {
         Properties properties = new Properties();
         try (InputStream input = UserSyncTests.class.getClassLoader().getResourceAsStream("test.properties")) {
@@ -63,7 +63,7 @@ public class UserSyncTests {
 
     private static FluentTestsHelperWithUserUpdate testsHelper;
     private static ClientAndServer mockServer;
-    
+
     @ClassRule
     public static GenericContainer<?> keycloak = new GenericContainer<>("quay.io/keycloak/keycloak:" + KEYCLOAK_VERSION)
         .withExposedPorts(KEYCLOAK_PORT, DEBUG_PORT)
@@ -100,7 +100,7 @@ public class UserSyncTests {
     @After
     public void afterTest() {
         testsHelper.deleteTestRealm();
-        
+
         if (mockServer != null) {
             mockServer.stop();
         }
@@ -182,20 +182,20 @@ public class UserSyncTests {
         patched = "federated-user";
 
         testsHelper.createTestUser(notFederated, "pass");
-        
+
         String providerId = addProvider();
         testsHelper.createTestUser(created, "pass");
 
         verifyUserCreate(mockServer, created, VerificationTimes.once());
-        
+
         // simulate server unavailability - creates changed user sync job
         mockServer.stop();
-        
+
         testsHelper.createTestUser(patched, "pass");
 
         // wait for the user to try sync
         Thread.sleep(5000);
-        
+
         mockServer = initMockServer(true);
         testsHelper.getTestRealmResource().userStorage().syncUsers(providerId, "triggerChangedUsersSync");
 
@@ -215,15 +215,15 @@ public class UserSyncTests {
         created2 = "federated-user-2";
 
         testsHelper.createTestUser(notFederated, "pass");
-        
+
         String providerId = addProvider();
         testsHelper.createTestUser(created, "pass");
 
         verifyUserCreate(mockServer, created, VerificationTimes.once());
-        
+
         // simulate server unavailability
         mockServer.stop();
-        
+
         testsHelper.createTestUser(created2, "pass");
 
         // wait for the user to try sync
@@ -231,7 +231,7 @@ public class UserSyncTests {
 
         mockServer = initMockServer(false);
         testsHelper.getTestRealmResource().userStorage().syncUsers(providerId, "triggerFullSync");
-        
+
         verifyUserCreate(mockServer, created, VerificationTimes.once());
         verifyUserCreate(mockServer, created2, VerificationTimes.atLeast(1));
 
@@ -252,7 +252,7 @@ public class UserSyncTests {
 
         testsHelper.createDirectGrantClient(clientId);
         testsHelper.createTestUser(username, password);
-        
+
         provider.setConfig(new MultivaluedHashMap<String, String>() {{
             putSingle("endPoint", "http://%s:%s".formatted(DOCKER_HOST, MOCK_SERVER_PORT));
             putSingle("authorityUrl",  "http://localhost:%d/realms/test".formatted(KEYCLOAK_PORT));
@@ -260,7 +260,7 @@ public class UserSyncTests {
             putSingle("password", password);
             putSingle("clientId", clientId);
         }});
-        
+
         Response response = testsHelper.getTestRealmResource().components().add(provider);
         assertEquals(201, response.getStatus());
 
