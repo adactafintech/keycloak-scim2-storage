@@ -340,12 +340,6 @@
             </properties>
         </profile>
         <profile>
-            <id>keycloak-25</id>
-            <properties>
-                <keycloak.version>25.0.6</keycloak.version>
-            </properties>
-        </profile>
-        <profile>
             <id>keycloak-26</id>
             <properties>
                 <keycloak.version>26.2.5</keycloak.version>
