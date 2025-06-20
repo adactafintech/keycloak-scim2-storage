@@ -7,7 +7,10 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,10 +23,12 @@ public class ScimEventListener implements EventListenerProvider {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private JobEnqueuer jobQueue;
     private GroupMigrationHandler groupMigrationHandler;
+    private final KeycloakSession session;
 
     public ScimEventListener(KeycloakSession session, JobEnqueuer jobQueue) {
         this.jobQueue = jobQueue;
         this.groupMigrationHandler = new GroupMigrationHandler(session);
+        this.session = session;
     }
 
     @Override
@@ -83,30 +88,52 @@ public class ScimEventListener implements EventListenerProvider {
 
     private void handleGroupEvent(AdminEvent event) {
         OperationType operationType = event.getOperationType();
+        String realmId = event.getRealmId();
 
         logEventHandlingMessage(event);
-        JsonNode representationJson = readJsonString(event.getRepresentation());
+        
+        // Group delete does not have representation json 
+        if (operationType == OperationType.DELETE) {
+            String groupId = event.getResourcePath();
+            handleGroupDeleteEvent(event, groupId);
+            return;
+        }
 
+        JsonNode representationJson = readJsonString(event.getRepresentation());
         if (representationJson != null) {
             JsonNode groupId = representationJson.get("id");
 
+            if (shouldNotProcessGroup(event, realmId, groupId.asText())) {
+                return;
+            }
             if (groupId != null) {
                 if (operationType == OperationType.CREATE) {
-                    jobQueue.enqueueGroupCreateJob(event.getRealmId(), groupId.asText());
+                    jobQueue.enqueueGroupCreateJob(realmId, groupId.asText());
                 } else if (operationType == OperationType.UPDATE) {
-                    jobQueue.enqueueGroupUpdateJob(event.getRealmId(), groupId.asText());
-                } else if (operationType == OperationType.DELETE) {
-                    handleGroupDeleteEvent(event, groupId.asText());
+                    jobQueue.enqueueGroupUpdateJob(realmId, groupId.asText());
                 }
             }
         }
     }
 
+    private boolean shouldNotProcessGroup(AdminEvent event, String realmId, String groupId) {
+        RealmModel realm = session.realms().getRealm(realmId);
+        GroupModel group = session.groups().getGroupById(realm, groupId);
+        
+        if (group != null && group.getParent() != null)
+        {
+            log.infof("Group %s (id %s) is not a top level group. Therefore it will not be synced to external system", group.getName(), groupId);
+            return true;
+        }
+
+        return false;
+    }
+
+
     private void handleGroupDeleteEvent(AdminEvent event, String groupId) {
         logEventHandlingMessage(event);
         // expected resource path: "groups/118e0637-d562-40ae-a357-e0b8bd71be6d"
         String[] splittedPath = event.getResourcePath().split("/");
-
         jobQueue.enqueueGroupDeleteJob(event.getRealmId(), splittedPath[splittedPath.length - 1]);
     }
 
