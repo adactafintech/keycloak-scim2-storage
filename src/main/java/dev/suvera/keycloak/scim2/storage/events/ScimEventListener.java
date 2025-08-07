@@ -54,6 +54,18 @@ public class ScimEventListener implements EventListenerProvider {
             handleGroupEvent(event);
         } else if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
             handleGroupMembershipEvent(event);
+        } else if (resourceType == ResourceType.REALM_ROLE) {
+            // TBD: this is an interesting case, we might want to handle it differently
+            // especially the delete operation. Delete operation removes the role from
+            // the database, and from other resources that are using this role. However,
+            // only role removal event is triggered. The unassigning of the role happen
+            // silently as a side effect of the delete operation but does not trigger
+            // any event.
+            // 
+            // CURRENTLY NOT SUPPORTED
+            //
+        } else if (resourceType == ResourceType.REALM_ROLE_MAPPING) {
+            handleRoleMappingEvent(event);
         } else if (resourceType == ResourceType.REALM) {
             String resourcePath = event.getResourcePath();
             if (resourcePath != null && resourcePath.startsWith("group", 0)) {
@@ -151,6 +163,39 @@ public class ScimEventListener implements EventListenerProvider {
             jobQueue.enqueueGroupJoinJob(event.getRealmId(), groupId, userId);
         } else if (operationType == OperationType.DELETE) {
             jobQueue.enqueueGroupLeaveJob(event.getRealmId(), groupId, userId);
+        }
+    }
+
+    private void handleRoleMappingEvent(AdminEvent event) {
+        OperationType operationType = event.getOperationType();
+
+        logEventHandlingMessage(event);
+        // expected resource path:
+        // "groups/d3540677-f31d-4f34-b25c-1425dbc84459/role-mappings/realm"
+
+        String realmId = event.getRealmId();
+        String[] splittedPath = event.getResourcePath().split("/");
+        String resourceType = splittedPath[0];
+        String groupId = splittedPath[1];
+
+        if (!resourceType.equals("groups")) {
+            return;
+        }
+
+        JsonNode representationJson = readJsonString(event.getRepresentation());
+        if (representationJson != null) {
+            if (representationJson.isArray()) {
+                for (JsonNode representationNode : representationJson) {
+                    String roleName = representationNode.get("name").asText();
+                    String roleId = representationNode.get("id").asText();
+                    
+                    if (operationType == OperationType.CREATE) {
+                        jobQueue.enqueueGroupAssignRoleJob(event.getRealmId(), groupId, roleId, roleName);
+                    } else if (operationType == OperationType.DELETE) {
+                        jobQueue.enqueueGroupUnassignRoleJob(event.getRealmId(), groupId, roleId, roleName);
+                    }
+                }
+            }
         }
     }
 

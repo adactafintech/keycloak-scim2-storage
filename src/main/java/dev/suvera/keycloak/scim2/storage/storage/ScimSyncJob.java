@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.GroupModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -29,6 +30,8 @@ public class ScimSyncJob {
     public static final String DELETE_GROUP = "groupDelete";
     public static final String JOIN_GROUP = "groupJoin";
     public static final String LEAVE_GROUP = "groupLeave";
+    public static final String ADD_ROLE_TO_GROUP = "groupRoleAdd";
+    public static final String REMOVE_ROLE_FROM_GROUP = "groupRoleRemove";
 
     private static final Logger log = Logger.getLogger(ScimSyncJob.class);
     private KeycloakSession session;
@@ -68,6 +71,9 @@ public class ScimSyncJob {
         } catch (SyncException e) {
             queueManager.dequeueJob(job);
             log.info(e.getMessage(), e);
+        } catch (Exception e) {
+            queueManager.dequeueJob(job);
+            log.info(e.getMessage(), e);
         }
     }
 
@@ -97,6 +103,12 @@ public class ScimSyncJob {
             joinGroup(jobModel);
         } else if (action.equals(LEAVE_GROUP)) {
             leaveGroup(jobModel);
+        } else if (action.equals(ADD_ROLE_TO_GROUP)) {
+            assignRoleToGroup(jobModel);
+        } else if (action.equals(REMOVE_ROLE_FROM_GROUP)) {
+            unassignRoleFromGroup(jobModel);
+        } else {
+            log.warnf("Unknown action %s for SCIM sync job %s", action, job.getId());
         }
     }
 
@@ -250,18 +262,32 @@ public class ScimSyncJob {
     }
 
     private void createOrUpdateGroup(ScimSyncJobModel jobModel, boolean updateOnly) throws ScimException, SyncException {
+        ComponentModel componentModel = getComponentModel(jobModel);
+        createOrUpdateGroupOnComponent(jobModel, componentModel, updateOnly);
+    }
+
+    private ComponentModel getComponentModel(ScimSyncJobModel jobModel) throws ScimException, SyncException {
         ComponentModel componentModel = jobModel.getComponent();
+        RealmModel realmModel = jobModel.getRealm();
 
         if (componentModel == null) {
-            for (ComponentModel component : ComponentModelUtils
-                    .getComponents(session.getKeycloakSessionFactory(), jobModel.getRealm(),
-                            SkssStorageProviderFactory.PROVIDER_ID)
-                    .collect(Collectors.toList())) {
-                createOrUpdateGroupOnComponent(jobModel, component, updateOnly);
-            }
-        } else {
-            createOrUpdateGroupOnComponent(jobModel, componentModel, updateOnly);
+            List<ComponentModel> components = ComponentModelUtils
+                .getComponents(session.getKeycloakSessionFactory(), realmModel, SkssStorageProviderFactory.PROVIDER_ID)
+                .collect(Collectors.toList());
+
+            componentModel = components.stream()
+                .filter(c -> SkssStorageProviderFactory.PROVIDER_ID.equals(c.getName()))
+                .findFirst()
+                .orElse(null);
         }
+
+        if (componentModel == null) {
+            throw new SyncException("Group could not be synced. Federated user component could not be acquired. ProviderId: " +
+                SkssStorageProviderFactory.PROVIDER_ID + ", Realm: " + realmModel.getName()
+            );
+        }
+
+        return componentModel;
     }
 
     private void deleteGroup(ScimSyncJobModel jobModel) throws ScimException {
@@ -342,6 +368,51 @@ public class ScimSyncJob {
             scimClient.joinGroup(scimGroupAdapter, scimUserAdapter);
         } else {
             scimClient.leaveGroup(scimGroupAdapter, scimUserAdapter);
+        }
+
+        return false;
+    }
+
+    private void assignRoleToGroup(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        boolean shouldRecreateJob = assignOrUnassignRoleOnGroup(jobModel, true);
+
+        if (shouldRecreateJob) {
+            enquerer.enqueueGroupJoinJob(jobModel.getRealm().getId(), jobModel.getGroup().getId(), jobModel.getUser().getId());
+        }
+    }
+
+    private void unassignRoleFromGroup(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        boolean shouldRecreateJob = assignOrUnassignRoleOnGroup(jobModel, false);
+
+        if (shouldRecreateJob) {
+            enquerer.enqueueGroupJoinJob(jobModel.getRealm().getId(), jobModel.getGroup().getId(), jobModel.getUser().getId());
+        }
+    }
+
+    private boolean assignOrUnassignRoleOnGroup(ScimSyncJobModel jobModel, boolean join) throws ScimException, SyncException {
+        GroupModel groupModel = jobModel.getGroup();
+        RoleModel roleModel = jobModel.getRole();
+        ScimSyncJobQueue job = jobModel.getJob();
+        RealmModel realmModel = jobModel.getRealm();
+
+        if (groupModel == null) {
+            throw new SyncException("Could not find group by id: %s. Canceling assign/unassign role to group action.", job.getUserId());
+        }
+
+        if (roleModel == null) {
+            throw new SyncException("Could not find role by id: %s. Canceling assign/unassign role to group action.", job.getUserId());
+        }
+
+        ComponentModel componentModel = getComponentModel(jobModel);
+        ScimGroupAdapter scimGroupAdapter = new ScimGroupAdapter(session, groupModel, realmModel.getId(),
+            componentModel.getId());
+
+        ScimClient2 scimClient = ScimClient2Factory.getClient(componentModel);
+
+        if (join) {
+            scimClient.assignRoleToGroup(scimGroupAdapter, roleModel);
+        } else {
+            scimClient.unassignRoleFromGroup(scimGroupAdapter, roleModel);
         }
 
         return false;

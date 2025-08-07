@@ -36,6 +36,8 @@ public class ScimSyncJobQueue {
         this.processed = other.processed;
         this.createdOn = other.createdOn != null ? new Date(other.createdOn.getTime()) : null;
         this.externalId = other.externalId;
+        this.roleId = other.roleId;
+        this.roleName = other.roleName;
     }
 
     @Id
@@ -47,6 +49,12 @@ public class ScimSyncJobQueue {
 
     @Column(name = "GROUP_ID")
     private String groupId;
+
+    @Column(name = "ROLE_ID")
+    private String roleId;
+
+    @Column(name = "ROLE_NAME")
+    private String roleName;
 
     @Column(name = "ACTION", nullable = false)
     private String action;

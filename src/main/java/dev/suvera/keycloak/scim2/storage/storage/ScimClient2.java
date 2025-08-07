@@ -431,8 +431,6 @@ public class ScimClient2 {
 
         GroupRecord groupRecord = new GroupRecord();
         groupRecord.setDisplayName(groupModel.getGroupModel().getName());
-
-        //groupModel.getGroupModel().getAttributes();
         
         groupRecord = scimService.createGroup(groupRecord);
 
@@ -570,5 +568,48 @@ public class ScimClient2 {
         if (id != null) {
             scimService.deleteGroup(id);
         }
+    }
+
+    public boolean assignRoleToGroup(ScimGroupAdapter groupModel, RoleModel roleModel) throws ScimException {
+        if (scimService == null) {
+            return false;
+        }
+
+        String roleName = roleModel.getName();
+        String externalGroupId = groupModel.getExternalId();
+
+        if (roleName != null && externalGroupId != null) {
+            PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
+            
+            patchRequest.addOperation(PatchOp.ADD, "roles", roleName);
+
+            PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
+            return response.getStatus() == 200;
+        }
+
+        return false;
+    }
+
+    public boolean unassignRoleFromGroup(ScimGroupAdapter groupModel, RoleModel roleModel) throws ScimException {
+        if (scimService == null) {
+            return false;
+        }
+
+        String roleName = roleModel.getName();
+        String externalGroupId = groupModel.getExternalId();
+
+        if (roleName != null && externalGroupId != null) {
+            PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
+
+            patchRequest.addOperation(
+                PatchOp.REMOVE,
+                String.format("roles[value eq \"%s\"]", roleName),
+                null);
+
+            PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
+            return response.getStatus() == 200;
+        }
+
+        return false;
     }
 }

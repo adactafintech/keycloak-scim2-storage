@@ -136,6 +136,30 @@ public class JobEnqueuer {
         log.infof("User with id %s scheduled to leave group with id %s.", userId, groupId);
     }
 
+    public void enqueueGroupAssignRoleJob(String realmId, String groupId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.ADD_ROLE_TO_GROUP);
+        entity.setGroupId(groupId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+        
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be assigned to group with id %s.", roleId, groupId);
+    }
+
+    public void enqueueGroupUnassignRoleJob(String realmId, String groupId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.REMOVE_ROLE_FROM_GROUP);
+        entity.setGroupId(groupId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be unassigned from group with id %s.", roleId, groupId);
+    }
+
     private ScimSyncJobQueue createJobQueue(String realmId) {
         ScimSyncJobQueue entity = new ScimSyncJobQueue();
         entity.setId(KeycloakModelUtils.generateId());
@@ -176,8 +200,9 @@ public class JobEnqueuer {
 
         String userId = job.getUserId() != null ? job.getUserId() : "null";
         String groupId = job.getGroupId() != null ? job.getGroupId() : "null";
+        String roleId = job.getRoleId() != null ? job.getRoleId() : "null";
 
-        String raw = userId + ":" + groupId;
+        String raw = userId + ":" + groupId + ":" + roleId;
         UUID uuid = UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8));
         return uuid.toString();
     }
