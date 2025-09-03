@@ -2,23 +2,30 @@ package dev.suvera.keycloak.scim2.storage.storage;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
+import org.jboss.logging.Logger;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.suvera.scim2.schema.data.misc.PatchRequest;
 import dev.suvera.scim2.schema.data.user.UserRecord;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserEmail;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserPhoneNumber;
+import dev.suvera.scim2.schema.data.user.UserRecord.UserRole;
 import dev.suvera.scim2.schema.enums.PatchOp;
 import dev.suvera.scim2.schema.ScimConstant;
 import dev.suvera.scim2.schema.data.ExtensionRecord;
 
 public class UserRecordPatchBuilder {
     private UserRecordPatchBuilder() { /* static class */ }
+    private static final Logger log = Logger.getLogger(UserRecordPatchBuilder.class);
 
     public static PatchRequest<UserRecord> buildPatchRequest(UserRecord modifiedRecord, UserRecord originalRecord) {
         PatchRequest<UserRecord> patchRequest = new PatchRequest<>(UserRecord.class);
@@ -75,7 +82,55 @@ public class UserRecordPatchBuilder {
         addListValueOperations(patchRequest, originalRecord.getAddresses(), modifiedRecord.getAddresses(), t -> t,
                 v -> v, "addreses[type eq %s]");
 
+        // Due to nature of the application and how roles are managed we only support adding roles.
+        // Removing roles in update user request is not supported as it might lead to unwanted side 
+        // effects. Unassigning roles is supported but that is done through different execution path.
+        // Why this specific?
+        // - Roles might be assigned to a user directly in the application (not through SCIM). In this
+        //   case the role would be removed if it is not assigned in keycloak.
+        addRoleOprations(patchRequest, modifiedRecord.getRoles(), originalRecord.getRoles());
+
         return patchRequest;
+    }
+
+    private static void addRoleOprations(PatchRequest<UserRecord> patchRequest, List<UserRole> modifiedRoles, List<UserRole> originalRoles) {
+        modifiedRoles = modifiedRoles != null ? modifiedRoles : new ArrayList<>();
+        originalRoles = originalRoles != null ? originalRoles : new ArrayList<>();
+        
+        List<Map<String, String>> userRoles = new ArrayList<>();
+        
+        for (UserRole role : modifiedRoles) {
+            boolean roleExists = false;
+            
+            for (UserRole originalRole : originalRoles) {
+                if (originalRole.getValue().equals(role.getValue())) {
+                    roleExists = true;
+                    break;
+                }
+            }
+
+            if (!roleExists) {
+                String roleJson = null;
+                try {
+                    UserRole userRole = new UserRole();
+                    userRole.setDisplay(role.getDisplay());
+                    userRole.setValue(role.getDisplay());
+
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    roleJson = objectMapper.writeValueAsString(userRole);
+                    
+                    Map<String, String> roleMap = new HashMap<>();
+                    roleMap.put("value", roleJson);    
+                    userRoles.add(roleMap);
+                } catch (JsonProcessingException e) {
+                    log.error("JSON processing error", e);
+                }
+            }
+        }
+
+        if (userRoles.size() > 0) {
+            patchRequest.addOperation(PatchOp.ADD, "roles", userRoles);
+        }
     }
 
     private static List<Map.Entry<String, String>> extractObjectAsKeyValueListFromExtension(ExtensionRecord userExtension, String fieldName) {

@@ -172,13 +172,12 @@ public class ScimEventListener implements EventListenerProvider {
         logEventHandlingMessage(event);
         // expected resource path:
         // "groups/d3540677-f31d-4f34-b25c-1425dbc84459/role-mappings/realm"
+        // "users/059374b4-8fb0-43d4-8928-06ba13a160d2/role-mappings/realm"
 
-        String realmId = event.getRealmId();
         String[] splittedPath = event.getResourcePath().split("/");
         String resourceType = splittedPath[0];
-        String groupId = splittedPath[1];
-
-        if (!resourceType.equals("groups")) {
+        
+        if (!resourceType.equals("groups") && !resourceType.equals("users")) {
             return;
         }
 
@@ -189,10 +188,14 @@ public class ScimEventListener implements EventListenerProvider {
                     String roleName = representationNode.get("name").asText();
                     String roleId = representationNode.get("id").asText();
                     
-                    if (operationType == OperationType.CREATE) {
-                        jobQueue.enqueueGroupAssignRoleJob(event.getRealmId(), groupId, roleId, roleName);
-                    } else if (operationType == OperationType.DELETE) {
-                        jobQueue.enqueueGroupUnassignRoleJob(event.getRealmId(), groupId, roleId, roleName);
+                    if (operationType == OperationType.CREATE && resourceType.equals("users")) {
+                        jobQueue.enqueueUserAssignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.CREATE && resourceType.equals("groups")) {
+                        jobQueue.enqueueGroupAssignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.DELETE && resourceType.equals("users")) {
+                        jobQueue.enqueueUserUnassignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.DELETE && resourceType.equals("groups")) {
+                        jobQueue.enqueueGroupUnassignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
                     }
                 }
             }
