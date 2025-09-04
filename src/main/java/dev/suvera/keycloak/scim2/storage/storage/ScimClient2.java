@@ -23,7 +23,6 @@ import org.keycloak.models.GroupModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
-import org.keycloak.protocol.oid4vc.model.Role;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
