@@ -38,7 +38,7 @@ public final class ComponentModelUtils {
     }
 
     public static Stream<ComponentModel> getComponents(KeycloakSessionFactory factory, RealmModel realm, String providerId) {
-        return getComponents(factory, realm.getId(), providerId)
+        return getComponents(factory, realm.getName(), providerId)
         .map(c -> realm.getComponent(c.getId()));
     }
 }

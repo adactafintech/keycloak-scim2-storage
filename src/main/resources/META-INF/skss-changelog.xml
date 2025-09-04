@@ -69,5 +69,20 @@
         />
         
     </changeSet>
+    
+    <changeSet author="adacta" id="add-role-id-to-scim-sync-job-queue">
+        <addColumn tableName="SCIM_SYNC_JOB_QUEUE">
+            <column name="ROLE_ID" type="VARCHAR(128)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
 
+    <changeSet author="adacta" id="add-role-name-to-scim-sync-job-queue">
+        <addColumn tableName="SCIM_SYNC_JOB_QUEUE">
+            <column name="ROLE_NAME" type="VARCHAR(128)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

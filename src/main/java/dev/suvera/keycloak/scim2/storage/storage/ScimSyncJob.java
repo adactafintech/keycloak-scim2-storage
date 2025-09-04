@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.GroupModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -29,6 +30,10 @@ public class ScimSyncJob {
     public static final String DELETE_GROUP = "groupDelete";
     public static final String JOIN_GROUP = "groupJoin";
     public static final String LEAVE_GROUP = "groupLeave";
+    public static final String ADD_ROLE_TO_GROUP = "groupRoleAdd";
+    public static final String REMOVE_ROLE_FROM_GROUP = "groupRoleRemove";
+    public static final String ADD_ROLE_TO_USER = "userRoleAdd";
+    public static final String REMOVE_ROLE_FROM_USER = "userRoleRemove";
 
     private static final Logger log = Logger.getLogger(ScimSyncJob.class);
     private KeycloakSession session;
@@ -68,6 +73,9 @@ public class ScimSyncJob {
         } catch (SyncException e) {
             queueManager.dequeueJob(job);
             log.info(e.getMessage(), e);
+        } catch (Exception e) {
+            queueManager.dequeueJob(job);
+            log.info(e.getMessage(), e);
         }
     }
 
@@ -81,22 +89,46 @@ public class ScimSyncJob {
 
         String action = job.getAction();
 
-        if (action.equals(CREATE_USER)) {
-            createUser(jobModel, result);
-        } else if (action.equals(CREATE_USER_EXTERNAL)) {
-            createUserExternal(jobModel, result);
-        } else if (action.equals(DELETE_USER)) {
-            deleteUser(jobModel, result);
-        } else if (action.equals(CREATE_GROUP)) {
-            createOrUpdateGroup(jobModel, false);
-        } else if (action.equals(UPDATE_GROUP)) {
-            createOrUpdateGroup(jobModel, true);
-        } else if (action.equals(DELETE_GROUP)) {
-            deleteGroup(jobModel);
-        } else if (action.equals(JOIN_GROUP)) {
-            joinGroup(jobModel);
-        } else if (action.equals(LEAVE_GROUP)) {
-            leaveGroup(jobModel);
+        switch (action) {
+            case CREATE_USER:
+                createUser(jobModel, result);
+                break;
+            case CREATE_USER_EXTERNAL:
+                createUserExternal(jobModel, result);
+                break;
+            case DELETE_USER:
+                deleteUser(jobModel, result);
+                break;
+            case CREATE_GROUP:
+                createOrUpdateGroup(jobModel, false);
+                break;
+            case UPDATE_GROUP:
+                createOrUpdateGroup(jobModel, true);
+                break;
+            case DELETE_GROUP:
+                deleteGroup(jobModel);
+                break;
+            case JOIN_GROUP:
+                joinGroup(jobModel);
+                break;
+            case LEAVE_GROUP:
+                leaveGroup(jobModel);
+                break;
+            case ADD_ROLE_TO_GROUP:
+                assignRoleToGroup(jobModel);
+                break;
+            case REMOVE_ROLE_FROM_GROUP:
+                unassignRoleFromGroup(jobModel);
+                break;
+            case ADD_ROLE_TO_USER:
+                assignRoleToUser(jobModel);
+                break;
+            case REMOVE_ROLE_FROM_USER:
+                unassignRoleFromUser(jobModel);
+                break;
+            default:
+                log.warnf("Unknown action %s for SCIM sync job %s", action, job.getId());
+                break;
         }
     }
 
@@ -164,7 +196,7 @@ public class ScimSyncJob {
 
         if (result != null) {
             List<GroupModel> userGroups = userModel.getGroupsStream().collect(Collectors.toList());
-
+            
             session.groups().getGroupsStream(realmModel).forEach(group -> {
                 if (userGroups.stream().anyMatch(userGroup -> userGroup.getId().equals(group.getId()))) {
                     enquerer.enqueueGroupJoinJob(realmModel.getId(), group.getId(), userModel.getId());
@@ -200,6 +232,40 @@ public class ScimSyncJob {
         }
     }
 
+    private void assignRoleToUser(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        assignOrUnassignRoleOnUser(jobModel, true);
+    }
+
+    private void unassignRoleFromUser(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        assignOrUnassignRoleOnUser(jobModel, false);
+    }
+
+    private void assignOrUnassignRoleOnUser(ScimSyncJobModel jobModel, boolean join) throws ScimException, SyncException {
+        UserModel userModel = jobModel.getUser();
+        RoleModel roleModel = jobModel.getRole();
+        ScimSyncJobQueue job = jobModel.getJob();
+        RealmModel realmModel = jobModel.getRealm();
+
+        if (userModel == null) {
+            throw new SyncException("Could not find user by id: %s. Canceling assign/unassign role to user action.", job.getUserId());
+        }
+
+        if (roleModel == null) {
+            throw new SyncException("Could not find role by id: %s. Canceling assign/unassign role to user action.", job.getUserId());
+        }
+
+        ComponentModel componentModel = getComponentModel(jobModel);
+        ScimUserAdapter scimUserAdapter = new ScimUserAdapter(session, realmModel, componentModel, userModel);
+
+        ScimClient2 scimClient = ScimClient2Factory.getClient(componentModel);
+
+        if (join) {
+            scimClient.assignRoleToUser(scimUserAdapter, roleModel);
+        } else {
+            scimClient.unassignRoleFromUser(scimUserAdapter, roleModel);
+        }
+    }
+
     private void createOrUpdateGroupOnComponent(ScimSyncJobModel jobModel, ComponentModel componentModel, boolean updateOnly) throws ScimException, SyncException {
         GroupModel groupModel = jobModel.getGroup();
         RealmModel realmModel = jobModel.getRealm();
@@ -220,44 +286,33 @@ public class ScimSyncJob {
         }
     }
 
-    private String getExternalUserIdByUsername(RealmModel realmModel, ComponentModel componentModel, String username,
-            ScimClient2 scimClient) {
-
-        if (username == null) {
-            return null;
-        }
-
-        username = username.trim();
-
-        UserModel userModel = session.users().getUserByUsername(realmModel, username);
-
-        if (userModel == null) {
-            return null;
-        }
-
-        ScimUserAdapter userAdapter = new ScimUserAdapter(session, realmModel, componentModel, userModel);
-        String externalId = userAdapter.getExternalId();
-
-        if (externalId == null || externalId.isEmpty()) {
-            externalId = scimClient.tryToSetExternalUserIdFromOriginalUser(username, userAdapter);
-        }
-
-        return externalId;
+    private void createOrUpdateGroup(ScimSyncJobModel jobModel, boolean updateOnly) throws ScimException, SyncException {
+        ComponentModel componentModel = getComponentModel(jobModel);
+        createOrUpdateGroupOnComponent(jobModel, componentModel, updateOnly);
     }
 
-    private void createOrUpdateGroup(ScimSyncJobModel jobModel, boolean updateOnly) throws ScimException, SyncException {
+    private ComponentModel getComponentModel(ScimSyncJobModel jobModel) throws ScimException, SyncException {
         ComponentModel componentModel = jobModel.getComponent();
+        RealmModel realmModel = jobModel.getRealm();
 
         if (componentModel == null) {
-            for (ComponentModel component : ComponentModelUtils
-                    .getComponents(session.getKeycloakSessionFactory(), jobModel.getRealm(),
-                            SkssStorageProviderFactory.PROVIDER_ID)
-                    .collect(Collectors.toList())) {
-                createOrUpdateGroupOnComponent(jobModel, component, updateOnly);
-            }
-        } else {
-            createOrUpdateGroupOnComponent(jobModel, componentModel, updateOnly);
+            List<ComponentModel> components = ComponentModelUtils
+                .getComponents(session.getKeycloakSessionFactory(), realmModel, SkssStorageProviderFactory.PROVIDER_ID)
+                .collect(Collectors.toList());
+
+            componentModel = components.stream()
+                .filter(c -> SkssStorageProviderFactory.PROVIDER_ID.equals(c.getName()))
+                .findFirst()
+                .orElse(null);
         }
+
+        if (componentModel == null) {
+            throw new SyncException("Group could not be synced. Federated user component could not be acquired. ProviderId: " +
+                SkssStorageProviderFactory.PROVIDER_ID + ", Realm: " + realmModel.getName()
+            );
+        }
+
+        return componentModel;
     }
 
     private void deleteGroup(ScimSyncJobModel jobModel) throws ScimException {
@@ -341,5 +396,40 @@ public class ScimSyncJob {
         }
 
         return false;
+    }
+
+    private void assignRoleToGroup(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        assignOrUnassignRoleOnGroup(jobModel, true);
+    }
+
+    private void unassignRoleFromGroup(ScimSyncJobModel jobModel) throws ScimException, SyncException {
+        assignOrUnassignRoleOnGroup(jobModel, false);
+    }
+
+    private void assignOrUnassignRoleOnGroup(ScimSyncJobModel jobModel, boolean join) throws ScimException, SyncException {
+        GroupModel groupModel = jobModel.getGroup();
+        RoleModel roleModel = jobModel.getRole();
+        ScimSyncJobQueue job = jobModel.getJob();
+        RealmModel realmModel = jobModel.getRealm();
+
+        if (groupModel == null) {
+            throw new SyncException("Could not find group by id: %s. Canceling assign/unassign role to group action.", job.getUserId());
+        }
+
+        if (roleModel == null) {
+            throw new SyncException("Could not find role by id: %s. Canceling assign/unassign role to group action.", job.getUserId());
+        }
+
+        ComponentModel componentModel = getComponentModel(jobModel);
+        ScimGroupAdapter scimGroupAdapter = new ScimGroupAdapter(session, groupModel, realmModel.getId(),
+            componentModel.getId());
+
+        ScimClient2 scimClient = ScimClient2Factory.getClient(componentModel);
+
+        if (join) {
+            scimClient.assignRoleToGroup(scimGroupAdapter, roleModel);
+        } else {
+            scimClient.unassignRoleFromGroup(scimGroupAdapter, roleModel);
+        }
     }
 }

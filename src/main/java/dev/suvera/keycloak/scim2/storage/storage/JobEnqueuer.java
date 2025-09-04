@@ -1,10 +1,14 @@
 package dev.suvera.keycloak.scim2.storage.storage;
 
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.storage.user.SynchronizationResult;
 import org.keycloak.timer.TimerProvider;
 
 import dev.suvera.keycloak.scim2.storage.jpa.ScimSyncJobQueue;
@@ -81,54 +85,103 @@ public class JobEnqueuer {
     }
 
     public void enqueueGroupCreateJob(String realmId, String groupId) {
-        // ScimSyncJobQueue entity = createJobQueue(realmId);
-        // entity.setAction(ScimSyncJob.CREATE_GROUP);
-        // entity.setGroupId(groupId);
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.CREATE_GROUP);
+        entity.setGroupId(groupId);
 
-        // run(entity);
+        run(entity);
 
-        // log.infof("Group with id %s scheduled to be added.", groupId);
+        log.infof("Group with id %s scheduled to be added.", groupId);
     }
 
     public void enqueueGroupUpdateJob(String realmId, String groupId) {
-        // ScimSyncJobQueue entity = createJobQueue(realmId);
-        // entity.setAction(ScimSyncJob.UPDATE_GROUP);
-        // entity.setGroupId(groupId);
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.UPDATE_GROUP);
+        entity.setGroupId(groupId);
 
-        // run(entity);
+        run(entity);
 
-        // log.infof("Group with id %s scheduled to be added.", groupId);
+        log.infof("Group with id %s scheduled to be added.", groupId);
     }
 
     public void enqueueGroupDeleteJob(String realmId, String groupId) {
-        // ScimSyncJobQueue entity = createJobQueue(realmId);
-        // entity.setAction(ScimSyncJob.DELETE_GROUP);
-        // entity.setGroupId(groupId);
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.DELETE_GROUP);
+        entity.setGroupId(groupId);
 
-        // run(entity);
+        run(entity);
 
-        // log.infof("Group with id %s scheduled to be deleted.", groupId);
+        log.infof("Group with id %s scheduled to be deleted.", groupId);
     }
 
     public void enqueueGroupJoinJob(String realmId, String groupId, String userId) {
-        // ScimSyncJobQueue entity = createJobQueue(realmId);
-        // entity.setAction(ScimSyncJob.JOIN_GROUP);
-        // entity.setGroupId(groupId);
-        // entity.setUserId(userId);
-        // run(entity);
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.JOIN_GROUP);
+        entity.setGroupId(groupId);
+        entity.setUserId(userId);
+        
+        run(entity);
 
-        // log.infof("User with id %s scheduled to join group with id %s.", userId, groupId);
+        log.infof("User with id %s scheduled to join group with id %s.", userId, groupId);
     }
 
     public void enqueueGroupLeaveJob(String realmId, String groupId, String userId) {
-        // ScimSyncJobQueue entity = createJobQueue(realmId);
-        // entity.setAction(ScimSyncJob.LEAVE_GROUP);
-        // entity.setGroupId(groupId);
-        // entity.setUserId(userId);
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.LEAVE_GROUP);
+        entity.setGroupId(groupId);
+        entity.setUserId(userId);
 
-        // run(entity);
+        run(entity);
 
-        // log.infof("User with id %s scheduled to leave group with id %s.", userId, groupId);
+        log.infof("User with id %s scheduled to leave group with id %s.", userId, groupId);
+    }
+
+    public void enqueueGroupAssignRoleJob(String realmId, String groupId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.ADD_ROLE_TO_GROUP);
+        entity.setGroupId(groupId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+        
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be assigned to group with id %s.", roleId, groupId);
+    }
+
+    public void enqueueGroupUnassignRoleJob(String realmId, String groupId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.REMOVE_ROLE_FROM_GROUP);
+        entity.setGroupId(groupId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be unassigned from group with id %s.", roleId, groupId);
+    }
+
+    public void enqueueUserAssignRoleJob(String realmId, String userId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.ADD_ROLE_TO_USER);
+        entity.setUserId(userId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+        
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be assigned to user with id %s.", roleId, userId);
+    }
+
+    public void enqueueUserUnassignRoleJob(String realmId, String userId, String roleId, String roleName) {
+        ScimSyncJobQueue entity = createJobQueue(realmId);
+        entity.setAction(ScimSyncJob.REMOVE_ROLE_FROM_USER);
+        entity.setUserId(userId);
+        entity.setRoleId(roleId);
+        entity.setRoleName(roleName);
+
+        run(entity);
+
+        log.infof("Role with id %s scheduled to be unassigned from user with id %s.", roleId, userId);
     }
 
     private ScimSyncJobQueue createJobQueue(String realmId) {
@@ -151,18 +204,30 @@ public class JobEnqueuer {
 
     private void run(ScimSyncJobQueue job) {
         queueManager.enqueueJobAndResetProcessed(job);
-        String id = job.getUserId() != null ? job.getUserId() :
-                    job.getGroupId() != null ? job.getGroupId() :
-                    null;
+        String id = generateJobId(job);
 
-        if (id == null) {
-            throw new IllegalArgumentException("Cannot run the job, neither userId or groupId is available.");
-        }
-        
         timer.scheduleTask(s -> {
             timer.cancelTask(id);
             ScimSyncJob sync = new ScimSyncJob(s);
-            sync.execute(new ScimSyncJobQueue(job));
+            
+            ScimSyncJobQueue syncJobQueue = new ScimSyncJobQueue(job);
+            SynchronizationResult result = new SynchronizationResult();
+
+            sync.execute(syncJobQueue, result);
         }, 500, id);
+    }
+
+    private String generateJobId(ScimSyncJobQueue job) {
+        if (job.getUserId() == null && job.getGroupId() == null) {
+            throw new IllegalArgumentException("Cannot run the job, neither userId or groupId is available.");
+        }
+
+        String userId = job.getUserId() != null ? job.getUserId() : "null";
+        String groupId = job.getGroupId() != null ? job.getGroupId() : "null";
+        String roleId = job.getRoleId() != null ? job.getRoleId() : "null";
+
+        String raw = userId + ":" + groupId + ":" + roleId;
+        UUID uuid = UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8));
+        return uuid.toString();
     }
 }

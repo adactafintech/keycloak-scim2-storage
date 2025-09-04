@@ -5,6 +5,7 @@ import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.RoleModel;
 
 import dev.suvera.keycloak.scim2.storage.jpa.ScimSyncJobQueue;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class ScimSyncJobModel {
     private ComponentModel component;
     private UserModel user;
     private GroupModel group;
+    private RoleModel role;
 
     public ScimSyncJobModel(ScimSyncJobQueue job) {
         this.job = job;
@@ -44,6 +46,10 @@ public class ScimSyncJobModel {
 
         if (group == null && realm != null && job.getGroupId() != null) {
             group = session.groups().getGroupById(realm, job.getGroupId());
+        }
+
+        if (role == null && realm != null && job.getRoleId() != null) {
+            role = session.roles().getRoleById(realm, job.getRoleId());
         }
     }
 }

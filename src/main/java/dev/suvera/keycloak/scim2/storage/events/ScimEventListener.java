@@ -7,7 +7,10 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,10 +23,12 @@ public class ScimEventListener implements EventListenerProvider {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private JobEnqueuer jobQueue;
     private GroupMigrationHandler groupMigrationHandler;
+    private final KeycloakSession session;
 
     public ScimEventListener(KeycloakSession session, JobEnqueuer jobQueue) {
         this.jobQueue = jobQueue;
         this.groupMigrationHandler = new GroupMigrationHandler(session);
+        this.session = session;
     }
 
     @Override
@@ -49,6 +54,18 @@ public class ScimEventListener implements EventListenerProvider {
             handleGroupEvent(event);
         } else if (resourceType == ResourceType.GROUP_MEMBERSHIP) {
             handleGroupMembershipEvent(event);
+        } else if (resourceType == ResourceType.REALM_ROLE) {
+            // TBD: this is an interesting case, we might want to handle it differently
+            // especially the delete operation. Delete operation removes the role from
+            // the database, and from other resources that are using this role. However,
+            // only role removal event is triggered. The unassigning of the role happen
+            // silently as a side effect of the delete operation but does not trigger
+            // any event.
+            // 
+            // CURRENTLY NOT SUPPORTED
+            //
+        } else if (resourceType == ResourceType.REALM_ROLE_MAPPING) {
+            handleRoleMappingEvent(event);
         } else if (resourceType == ResourceType.REALM) {
             String resourcePath = event.getResourcePath();
             if (resourcePath != null && resourcePath.startsWith("group", 0)) {
@@ -83,30 +100,52 @@ public class ScimEventListener implements EventListenerProvider {
 
     private void handleGroupEvent(AdminEvent event) {
         OperationType operationType = event.getOperationType();
+        String realmId = event.getRealmId();
 
         logEventHandlingMessage(event);
-        JsonNode representationJson = readJsonString(event.getRepresentation());
+        
+        // Group delete does not have representation json 
+        if (operationType == OperationType.DELETE) {
+            String groupId = event.getResourcePath();
+            handleGroupDeleteEvent(event, groupId);
+            return;
+        }
 
+        JsonNode representationJson = readJsonString(event.getRepresentation());
         if (representationJson != null) {
             JsonNode groupId = representationJson.get("id");
 
+            if (shouldNotProcessGroup(event, realmId, groupId.asText())) {
+                return;
+            }
             if (groupId != null) {
                 if (operationType == OperationType.CREATE) {
-                    jobQueue.enqueueGroupCreateJob(event.getRealmId(), groupId.asText());
+                    jobQueue.enqueueGroupCreateJob(realmId, groupId.asText());
                 } else if (operationType == OperationType.UPDATE) {
-                    jobQueue.enqueueGroupUpdateJob(event.getRealmId(), groupId.asText());
-                } else if (operationType == OperationType.DELETE) {
-                    handleGroupDeleteEvent(event, groupId.asText());
+                    jobQueue.enqueueGroupUpdateJob(realmId, groupId.asText());
                 }
             }
         }
     }
 
+    private boolean shouldNotProcessGroup(AdminEvent event, String realmId, String groupId) {
+        RealmModel realm = session.realms().getRealm(realmId);
+        GroupModel group = session.groups().getGroupById(realm, groupId);
+        
+        if (group != null && group.getParent() != null)
+        {
+            log.infof("Group %s (id %s) is not a top level group. Therefore it will not be synced to external system", group.getName(), groupId);
+            return true;
+        }
+
+        return false;
+    }
+
+
     private void handleGroupDeleteEvent(AdminEvent event, String groupId) {
         logEventHandlingMessage(event);
         // expected resource path: "groups/118e0637-d562-40ae-a357-e0b8bd71be6d"
         String[] splittedPath = event.getResourcePath().split("/");
-
         jobQueue.enqueueGroupDeleteJob(event.getRealmId(), splittedPath[splittedPath.length - 1]);
     }
 
@@ -124,6 +163,42 @@ public class ScimEventListener implements EventListenerProvider {
             jobQueue.enqueueGroupJoinJob(event.getRealmId(), groupId, userId);
         } else if (operationType == OperationType.DELETE) {
             jobQueue.enqueueGroupLeaveJob(event.getRealmId(), groupId, userId);
+        }
+    }
+
+    private void handleRoleMappingEvent(AdminEvent event) {
+        OperationType operationType = event.getOperationType();
+
+        logEventHandlingMessage(event);
+        // expected resource path:
+        // "groups/d3540677-f31d-4f34-b25c-1425dbc84459/role-mappings/realm"
+        // "users/059374b4-8fb0-43d4-8928-06ba13a160d2/role-mappings/realm"
+
+        String[] splittedPath = event.getResourcePath().split("/");
+        String resourceType = splittedPath[0];
+        
+        if (!resourceType.equals("groups") && !resourceType.equals("users")) {
+            return;
+        }
+
+        JsonNode representationJson = readJsonString(event.getRepresentation());
+        if (representationJson != null) {
+            if (representationJson.isArray()) {
+                for (JsonNode representationNode : representationJson) {
+                    String roleName = representationNode.get("name").asText();
+                    String roleId = representationNode.get("id").asText();
+                    
+                    if (operationType == OperationType.CREATE && resourceType.equals("users")) {
+                        jobQueue.enqueueUserAssignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.CREATE && resourceType.equals("groups")) {
+                        jobQueue.enqueueGroupAssignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.DELETE && resourceType.equals("users")) {
+                        jobQueue.enqueueUserUnassignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    } else if (operationType == OperationType.DELETE && resourceType.equals("groups")) {
+                        jobQueue.enqueueGroupUnassignRoleJob(event.getRealmId(), splittedPath[1], roleId, roleName);
+                    }
+                }
+            }
         }
     }
 

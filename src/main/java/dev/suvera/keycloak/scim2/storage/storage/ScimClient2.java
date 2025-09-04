@@ -3,6 +3,7 @@ package dev.suvera.keycloak.scim2.storage.storage;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +23,7 @@ import org.keycloak.models.GroupModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.protocol.oid4vc.model.Role;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,6 +44,7 @@ import dev.suvera.scim2.schema.data.user.UserRecord.UserAddress;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserEmail;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserName;
 import dev.suvera.scim2.schema.data.user.UserRecord.UserPhoneNumber;
+import dev.suvera.scim2.schema.data.user.UserRecord.UserRole;
 import dev.suvera.scim2.schema.enums.PatchOp;
 import dev.suvera.scim2.schema.ex.ScimException;
 
@@ -217,7 +220,7 @@ public class ScimClient2 {
         List<UserRecord.UserRole> roles = userModel.getRoleMappingsStream().map(roleModel -> {
             UserRecord.UserRole role = new UserRecord.UserRole();
             role.setDisplay(roleModel.getName());
-            role.setValue(roleModel.getId());
+            role.setValue(roleModel.getName());
             role.setType("direct");
             role.setPrimary(false);
         
@@ -389,6 +392,51 @@ public class ScimClient2 {
         }
     }
 
+    public boolean assignRoleToUser(ScimUserAdapter userModel, RoleModel roleModel) throws ScimException {
+        return userRolePatchRequest(userModel, roleModel, PatchOp.ADD);
+    }
+
+    public boolean unassignRoleFromUser(ScimUserAdapter userModel, RoleModel roleModel) throws ScimException {
+        return userRolePatchRequest(userModel, roleModel, PatchOp.REMOVE);
+    }
+
+    private boolean userRolePatchRequest(ScimUserAdapter userModel, RoleModel roleModel, PatchOp operation) throws ScimException {
+        if (scimService == null) {
+            return false;
+        }
+
+        String roleName = roleModel.getName();
+        String externalUserId = userModel.getExternalId();
+
+        if (roleName != null && externalUserId != null) {
+            PatchRequest<UserRecord> patchRequest = new PatchRequest<>(UserRecord.class);
+            
+            UserRole role = new UserRole();
+            role.setDisplay(roleModel.getName());
+            role.setValue(roleModel.getName());
+            
+            String roleJson = null;
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                roleJson = objectMapper.writeValueAsString(role);
+            } catch (JsonProcessingException e) {
+                log.error("JSON processing error", e);
+            }
+
+            Map<String, String> map = new HashMap<>();
+            List<Map<String, String>> userRoles = new ArrayList<>();
+            map.put("value", roleJson);    
+            userRoles.add(map);
+
+            patchRequest.addOperation(operation, "roles", userRoles);
+
+            PatchResponse<UserRecord> response = scimService.patchUser(externalUserId, patchRequest);
+            return response.getStatus() == 200;
+        }
+
+        return false;
+    }
+
     public void createOrUpdateGroup(ScimGroupAdapter scimGroup) throws ScimException {
         if (scimService == null) {
             return;
@@ -431,7 +479,7 @@ public class ScimClient2 {
 
         GroupRecord groupRecord = new GroupRecord();
         groupRecord.setDisplayName(groupModel.getGroupModel().getName());
-
+        
         groupRecord = scimService.createGroup(groupRecord);
 
         groupModel.setExternalId(groupRecord.getId());
@@ -548,11 +596,11 @@ public class ScimClient2 {
         if (externalUserId != null && externalGroupId != null) {
             PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
 
-            patchRequest.addOperation(
-                    PatchOp.REMOVE,
-                    String.format("members[value eq \"%s\"]", externalUserId),
-                    null);
-
+            GroupMember groupMember = new GroupMember();
+            groupMember.setDisplay(userModel.getUsername());
+            groupMember.setValue(userModel.getExternalId());
+            patchRequest.addOperation(PatchOp.REMOVE, "members", Arrays.asList(groupMember));
+            
             PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
             return response.getStatus() == 200;
         }
@@ -568,5 +616,48 @@ public class ScimClient2 {
         if (id != null) {
             scimService.deleteGroup(id);
         }
+    }
+
+    public boolean assignRoleToGroup(ScimGroupAdapter groupModel, RoleModel roleModel) throws ScimException {
+        if (scimService == null) {
+            return false;
+        }
+
+        String roleName = roleModel.getName();
+        String externalGroupId = groupModel.getExternalId();
+
+        if (roleName != null && externalGroupId != null) {
+            PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
+            
+            patchRequest.addOperation(PatchOp.ADD, "roles", roleName);
+
+            PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
+            return response.getStatus() == 200;
+        }
+
+        return false;
+    }
+
+    public boolean unassignRoleFromGroup(ScimGroupAdapter groupModel, RoleModel roleModel) throws ScimException {
+        if (scimService == null) {
+            return false;
+        }
+
+        String roleName = roleModel.getName();
+        String externalGroupId = groupModel.getExternalId();
+
+        if (roleName != null && externalGroupId != null) {
+            PatchRequest<GroupRecord> patchRequest = new PatchRequest<>(GroupRecord.class);
+
+            patchRequest.addOperation(
+                PatchOp.REMOVE,
+                String.format("roles[value eq \"%s\"]", roleName),
+                null);
+
+            PatchResponse<GroupRecord> response = scimService.patchGroup(externalGroupId, patchRequest);
+            return response.getStatus() == 200;
+        }
+
+        return false;
     }
 }
