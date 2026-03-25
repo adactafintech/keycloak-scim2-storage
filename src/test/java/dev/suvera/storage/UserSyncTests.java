@@ -42,7 +42,7 @@ import jakarta.ws.rs.core.Response;
 
 @RunWith(Arquillian.class)
 public class UserSyncTests {
-    public static String KEYCLOAK_VERSION = "26.2.5";
+    public static String KEYCLOAK_VERSION = "26.5.6";
     static {
         Properties properties = new Properties();
         try (InputStream input = UserSyncTests.class.getClassLoader().getResourceAsStream("test.properties")) {
