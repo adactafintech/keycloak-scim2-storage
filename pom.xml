@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.adacta.keycloak</groupId>
     <artifactId>scim2-provisioning</artifactId>
-    <version>2.9</version>
+    <version>2.10</version>
     <packaging>jar</packaging>
     <description>Keycloak SCIM2 Outbound User Provisioning</description>
 
@@ -14,10 +14,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <java.version>17</java.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
 
-        <keycloak.version>26.2.5</keycloak.version>
+        <keycloak.version>26.5.6</keycloak.version>
 
         <version.keycloak.client>26.0.4</version.keycloak.client>
         <version.resteasy>6.2.10.Final</version.resteasy>
@@ -74,6 +74,12 @@
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
             <version>${validation-api.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.el</artifactId>
+            <version>4.0.2</version>
         </dependency>
 
         <dependency>
@@ -343,6 +349,12 @@
             <id>keycloak-26</id>
             <properties>
                 <keycloak.version>26.2.5</keycloak.version>
+            </properties>
+        </profile>
+        <profile>
+            <id>keycloak-26-latest</id>
+            <properties>
+                <keycloak.version>26.5.6</keycloak.version>
             </properties>
         </profile>
     </profiles>
