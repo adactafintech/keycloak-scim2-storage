@@ -339,11 +339,7 @@ public class ScimSyncJob {
     }
 
     private void leaveGroup(ScimSyncJobModel jobModel) throws ScimException, SyncException {
-        boolean shouldRecreateJob = leaveOrJoinGroup(jobModel, false);
-
-        if (shouldRecreateJob) {
-            enquerer.enqueueGroupLeaveJob(jobModel.getRealm().getId(), jobModel.getGroup().getId(), jobModel.getUser().getId());
-        }
+        leaveOrJoinGroup(jobModel, false);
     }
 
     private boolean leaveOrJoinGroup(ScimSyncJobModel jobModel, boolean join) throws ScimException, SyncException {
@@ -372,6 +368,12 @@ public class ScimSyncJob {
         boolean createJobScheduled = false;
 
         if (scimGroupAdapter.getExternalId() == null) {
+            if (!join) {
+                // The group has never been synced to SCIM — the user cannot be a member
+                // of it on the SCIM side, so a leave is a no-op.
+                log.debugf("Skipping groupLeave for group %s: group has no SCIM external id.", groupModel.getId());
+                return false;
+            }
             enquerer.enqueueGroupCreateJob(realmModel.getId(), groupModel.getId());
             createJobScheduled = true;
         }
@@ -379,6 +381,12 @@ public class ScimSyncJob {
         ScimUserAdapter scimUserAdapter = new ScimUserAdapter(session, realmModel, componentModel, userModel);
 
         if (scimUserAdapter.getExternalId() == null) {
+            if (!join) {
+                // The user has never been synced to SCIM — they cannot be a member of any
+                // SCIM group, so a leave is a no-op.
+                log.debugf("Skipping groupLeave for user %s: user has no SCIM external id.", userModel.getId());
+                return false;
+            }
             enquerer.enqueueUserCreateJob(realmModel.getId(), componentModel.getId(), userModel.getId());
             createJobScheduled = true;
         }
