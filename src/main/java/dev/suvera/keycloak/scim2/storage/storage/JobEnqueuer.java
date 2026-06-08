@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.jboss.logging.Logger;
+import org.jboss.logging.MDC;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -18,6 +19,8 @@ public class JobEnqueuer {
     private KeycloakSession session;
     private TimerProvider timer;
     private ScimSyncJobQueueManager queueManager;
+
+    private static final String MDC_REALM_KEY = "kc.realmName";
 
     public JobEnqueuer(KeycloakSession session) {
         this.session = session;
@@ -185,6 +188,8 @@ public class JobEnqueuer {
     }
 
     private ScimSyncJobQueue createJobQueue(String realmId) {
+        MDC.put(MDC_REALM_KEY, resolveRealmName(realmId));
+        
         ScimSyncJobQueue entity = new ScimSyncJobQueue();
         entity.setId(KeycloakModelUtils.generateId());
         entity.setRealmId(realmId);
@@ -205,15 +210,24 @@ public class JobEnqueuer {
     private void run(ScimSyncJobQueue job) {
         queueManager.enqueueJobAndResetProcessed(job);
         String id = generateJobId(job);
+        String realmName = resolveRealmName(job.getRealmId());
 
         timer.scheduleTask(s -> {
             timer.cancelTask(id);
-            ScimSyncJob sync = new ScimSyncJob(s);
-            
-            ScimSyncJobQueue syncJobQueue = new ScimSyncJobQueue(job);
-            SynchronizationResult result = new SynchronizationResult();
+            MDC.clear();
+            if (realmName != null) {
+                MDC.put(MDC_REALM_KEY, realmName);
+            }
+            try {
+                ScimSyncJob sync = new ScimSyncJob(s);
 
-            sync.execute(syncJobQueue, result);
+                ScimSyncJobQueue syncJobQueue = new ScimSyncJobQueue(job);
+                SynchronizationResult result = new SynchronizationResult();
+
+                sync.execute(syncJobQueue, result);
+            } finally {
+                MDC.remove(MDC_REALM_KEY);
+            }
         }, 500, id);
     }
 
@@ -229,5 +243,10 @@ public class JobEnqueuer {
         String raw = userId + ":" + groupId + ":" + roleId;
         UUID uuid = UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8));
         return uuid.toString();
+    }
+
+    private String resolveRealmName(String realmId) {
+        RealmModel realm = session.realms().getRealm(realmId);
+        return realm != null ? realm.getName() : realmId;
     }
 }

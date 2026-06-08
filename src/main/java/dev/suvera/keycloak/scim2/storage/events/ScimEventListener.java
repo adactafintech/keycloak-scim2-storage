@@ -1,6 +1,7 @@
 package dev.suvera.keycloak.scim2.storage.events;
 
 import org.jboss.logging.Logger;
+import org.jboss.logging.MDC;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
@@ -20,6 +21,7 @@ import dev.suvera.keycloak.scim2.storage.storage.JobEnqueuer;
 
 public class ScimEventListener implements EventListenerProvider {
     private static final Logger log = Logger.getLogger(ScimEventListener.class);
+    private static final String MDC_REALM_KEY = "kc.realmName";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private JobEnqueuer jobQueue;
     private GroupMigrationHandler groupMigrationHandler;
@@ -37,15 +39,16 @@ public class ScimEventListener implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
+        MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
         if (event.getType() == EventType.UPDATE_PROFILE) {
             log.infof("Handling event: %s", event.getType());
-
             jobQueue.enqueueUserCreateJob(event.getRealmId(), event.getUserId());
         }
     }
 
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
+        MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
         ResourceType resourceType = event.getResourceType();
 
         if (resourceType == ResourceType.USER) {
@@ -224,5 +227,10 @@ public class ScimEventListener implements EventListenerProvider {
 
     private void logEventHandlingMessage(AdminEvent event) {
         log.debugf("Handling admin event: %s, %s", event.getResourceType(), event.getOperationType());
+    }
+
+    private String resolveRealmName(String realmId) {
+        RealmModel realm = session.realms().getRealm(realmId);
+        return realm != null ? realm.getName() : realmId;
     }
 }
