@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.adacta.keycloak</groupId>
     <artifactId>scim2-provisioning</artifactId>
-    <version>2.11</version>
+    <version>2.12</version>
     <packaging>jar</packaging>
     <description>Keycloak SCIM2 Outbound User Provisioning</description>
 
@@ -302,6 +302,14 @@
                         <configuration>
                             <skipTests>false</skipTests>
                         </configuration>
+                        <executions>
+                            <!-- UserSyncTests mounts target/*-jar-with-dependencies.jar into Keycloak,
+                                 so run the tests after package: mvn -P run-integration-tests verify -->
+                            <execution>
+                                <id>default-test</id>
+                                <phase>integration-test</phase>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
                 <testResources>

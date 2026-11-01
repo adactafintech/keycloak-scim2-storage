@@ -10,25 +10,38 @@ This is extension to keycloak, where it provides capability of user provisioning
 
 ## Installation
 
-```
-# clone this repo
-
-cd keycloak-scim2-storage
-
-mvn clean install
-
-
-# Take the backup of your Keyclock DB, this extension has new tables added.
-
-# Copy jar file to keyclock server
-
- cp -f target/suvera-keycloak-scim2-outbound-provisioning-jar-with-dependencies.jar \
-        /path/to/keycloak-11.0.2/standalone/deployments/
-
-
-# Restart keycloak server
+Download the jar for your Keycloak version from
+[GitHub Releases](https://github.com/adactafintech/keycloak-scim2-storage/releases/latest).
+Each release has one `scim2-provisioning-keycloak-<keycloak-version>-jar-with-dependencies.jar`
+per supported Keycloak version (currently 24.0.4, 26.2.5 and 26.5.6).
 
 ```
+# Take a backup of your Keycloak DB, this extension adds new tables.
+
+# Copy the jar into the Keycloak providers directory
+cp -f scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar /opt/keycloak/providers/
+
+# Rebuild and restart Keycloak
+/opt/keycloak/bin/kc.sh build
+```
+
+### Building from source
+
+```
+mvn clean package -Dkeycloak.version=26.5.6
+# -> target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
+
+# Integration tests (need Docker; they start Keycloak with the built jar)
+mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests
+```
+
+The `keycloak-24`, `keycloak-26` and `keycloak-26-5-6` profiles still work for local builds.
+
+### Releases
+
+A release is published when a merge to `master` changes the version in `pom.xml`
+to one that is not tagged yet. The supported Keycloak versions are listed in
+`.github/workflows/build.yml`.
 
 ### Is your server is compliant to SCIM 2.0?
 
