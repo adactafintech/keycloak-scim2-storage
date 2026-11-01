@@ -27,7 +27,7 @@ import org.mockserver.matchers.MatchType;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.MediaType;
 import org.mockserver.verify.VerificationTimes;
-import org.testcontainers.DockerClientFactory;
+import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 
@@ -59,7 +59,12 @@ public class UserSyncTests {
     public static final String PLUGIN_NAME = "scim2-provisioning-keycloak-%s-jar-with-dependencies.jar".formatted(KEYCLOAK_VERSION);
     public static final int MOCK_SERVER_PORT = 8081;
     public static final int DEBUG_PORT = 8787;
-    public static final String DOCKER_HOST = DockerClientFactory.instance().dockerHostIpAddress();
+    // Keycloak reaches the MockServer running on the test host through Testcontainers host port exposure;
+    // works on Linux runners, Docker Desktop and Docker-in-Docker alike.
+    public static final String MOCK_SERVER_HOST = "host.testcontainers.internal";
+    static {
+        Testcontainers.exposeHostPorts(MOCK_SERVER_PORT);
+    }
 
     private static FluentTestsHelperWithUserUpdate testsHelper;
     private static ClientAndServer mockServer;
@@ -254,7 +259,7 @@ public class UserSyncTests {
         testsHelper.createTestUser(username, password);
 
         provider.setConfig(new MultivaluedHashMap<String, String>() {{
-            putSingle("endPoint", "http://%s:%s".formatted(DOCKER_HOST, MOCK_SERVER_PORT));
+            putSingle("endPoint", "http://%s:%s".formatted(MOCK_SERVER_HOST, MOCK_SERVER_PORT));
             putSingle("authorityUrl",  "http://localhost:%d/realms/test".formatted(KEYCLOAK_PORT));
             putSingle("username", username);
             putSingle("password", password);
