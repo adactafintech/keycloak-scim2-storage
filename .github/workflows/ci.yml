@@ -38,14 +38,22 @@ jobs:
           maven_artifact=$(ls "$(mvn -v | sed -n 's/^Maven home: //p')"/lib/maven-artifact-*.jar)
           if ! result=$(java -cp "$maven_artifact" .github/scripts/VersionCheck.java "$version" $tags); then
             highest=${result#highest=}
-            echo "### :x: pom.xml version $version is lower than the highest tag $highest" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error file=pom.xml::pom.xml version $version is lower than the highest existing tag $highest"
+            message="pom.xml version $version is lower than the highest existing tag $highest"
+            echo "### :x: $message" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error file=pom.xml,title=Release preview::$message"
             exit 1
           fi
+          highest=${result#highest=}
 
           if printf '%s\n' $tags | grep -qxF "$version"; then
-            echo "### No version bump; merging will not release" >> "$GITHUB_STEP_SUMMARY"
-            echo "pom.xml version \`$version\` is already tagged." >> "$GITHUB_STEP_SUMMARY"
+            message="No version bump; merging will not release"
+            details="pom.xml version $version is already tagged."
           else
-            echo "### Merging will release $version" >> "$GITHUB_STEP_SUMMARY"
+            message="Merging will release $version"
+            details="pom.xml version $version is not tagged yet (highest tag: ${highest:-none})."
           fi
+
+          # Shown in the step log, as an annotation on the PR check and run page, and in the job summary.
+          echo "$message. $details"
+          echo "::notice file=pom.xml,title=Release preview::$message. $details"
+          printf '### %s\n%s\n' "$message" "$details" >> "$GITHUB_STEP_SUMMARY"
