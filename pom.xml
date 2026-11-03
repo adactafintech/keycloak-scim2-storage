@@ -22,11 +22,14 @@
         <version.keycloak.client>26.0.4</version.keycloak.client>
         <version.resteasy>6.2.10.Final</version.resteasy>
 
+        <!-- guava, commons-lang3, commons-io and commons-collections4 are provided by Keycloak (not bundled).
+             Their versions here only affect compilation; keep them no newer than what the oldest supported
+             Keycloak (24.0.4) ships, so no API is used that is missing at runtime. Guava: only long-stable APIs are used. -->
         <guava.version>33.1.0-jre</guava.version>
         <commons.text.version>1.15.0</commons.text.version>
         <commons.lang.version>3.10</commons.lang.version>
         <commons.coll.version>4.4</commons.coll.version>
-        <commons.io.version>2.7</commons.io.version>
+        <commons.io.version>2.15.1</commons.io.version>
 
         <jackson.version>2.17.0</jackson.version>
         <lombok.version>1.18.32</lombok.version>
