@@ -19,12 +19,15 @@ import dev.suvera.scim2.schema.ex.ScimException;
 import dev.suvera.scim2.schema.util.Scim2Protocol;
 import dev.suvera.scim2.schema.util.UrlUtil;
 import lombok.Data;
-import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static dev.suvera.scim2.schema.ScimConstant.*;
@@ -40,34 +43,37 @@ public class Scim2ClientImpl implements Scim2Client {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final boolean DEBUG = false;
 
+    // Same Content-Type OkHttp sent for a String body with media type application/scim+json.
+    private static final String SCIM_JSON_UTF8 = "application/scim+json; charset=utf-8";
+
     private String endPoint;
-    private OkHttpClient client;
+    private ScimHttpTransport transport;
     private Scim2Protocol protocol;
     private String spConfigJson;
     private String resourceTypesJson;
     private String schemasJson;
 
-    protected Scim2ClientImpl(String endPoint, OkHttpClient client) throws ScimException {
-        init(endPoint, client);
+    protected Scim2ClientImpl(String endPoint, ScimHttpTransport transport) throws ScimException {
+        init(endPoint, transport);
     }
 
     protected Scim2ClientImpl(
             String endPoint,
-            OkHttpClient client,
+            ScimHttpTransport transport,
             String spConfigJson,
             String resourceTypesJson,
             String schemasJson) throws ScimException {
         this.spConfigJson = spConfigJson;
         this.resourceTypesJson = resourceTypesJson;
         this.schemasJson = schemasJson;
-        init(endPoint, client);
+        init(endPoint, transport);
     }
 
-    private void init(String endPoint, OkHttpClient client) throws ScimException {
+    private void init(String endPoint, ScimHttpTransport transport) throws ScimException {
         endPoint = StringUtils.stripEnd(endPoint, " /");
 
         this.endPoint = endPoint;
-        this.client = client;
+        this.transport = transport;
 
         ScimResponse spResponse;
         Map<String, List<String>> headers = new HashMap<>();
@@ -143,7 +149,7 @@ public class Scim2ClientImpl implements Scim2Client {
         this.protocol = new Scim2Protocol(spResponse, rtResponse, schemasResponse);
     }
 
-    private Response doRequest(
+    private HttpResponse<String> doRequest(
             HttpMethod method,
             String path,
             Object payload) throws ScimException {
@@ -162,9 +168,13 @@ public class Scim2ClientImpl implements Scim2Client {
             }
         }
 
-        Request.Builder builder = new Request.Builder()
-                .url(endPoint + path)
-                .header("X-Requested-With", CLIENT_NAME);
+        HttpRequest.Builder builder;
+        try {
+            builder = HttpRequest.newBuilder(UrlUtil.toUri(endPoint + path));
+        } catch (IllegalArgumentException e) {
+            throw new ScimException("Invalid SCIM request URL: " + endPoint + path, e);
+        }
+        builder.header("X-Requested-With", CLIENT_NAME);
 
         String body = null;
         if (payload != null) {
@@ -182,37 +192,28 @@ public class Scim2ClientImpl implements Scim2Client {
 
         if (HttpMethod.DELETE.equals(method)) {
             if (body != null && !body.isEmpty()) {
-                builder.delete(RequestBody.create(MediaType.parse("application/scim+json"), body));
+                builder.header(CONTENT_TYPE, SCIM_JSON_UTF8).method("DELETE", BodyPublishers.ofString(body, StandardCharsets.UTF_8));
             } else {
-                builder.header(CONTENT_TYPE, "application/scim+json").delete();
+                builder.header(CONTENT_TYPE, "application/scim+json").DELETE();
             }
         } else if (HttpMethod.PUT.equals(method)) {
-            if (body == null) {
-                body = "";
-            }
-            builder.put(RequestBody.create(MediaType.parse("application/scim+json"), body));
+            builder.header(CONTENT_TYPE, SCIM_JSON_UTF8).PUT(BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8));
         } else if (HttpMethod.PATCH.equals(method)) {
-            if (body == null) {
-                body = "";
-            }
-            builder.patch(RequestBody.create(MediaType.parse("application/scim+json"), body));
+            builder.header(CONTENT_TYPE, SCIM_JSON_UTF8).method("PATCH", BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8));
         } else if (!HttpMethod.GET.equals(method)) {
-            if (body == null) {
-                body = "";
-            }
-            builder.post(RequestBody.create(MediaType.parse("application/scim+json"), body));
+            builder.header(CONTENT_TYPE, SCIM_JSON_UTF8).POST(BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8));
+        } else {
+            builder.GET();
         }
 
-        Request request = builder.build();
-        Call call = client.newCall(request);
-        Response response;
         try {
-            response = call.execute();
+            return transport.send(builder);
         } catch (IOException e) {
             throw new ScimException("Could not send HTTP request to scim2 service", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ScimException("Interrupted while sending HTTP request to scim2 service", e);
         }
-
-        return response;
     }
 
     @Override

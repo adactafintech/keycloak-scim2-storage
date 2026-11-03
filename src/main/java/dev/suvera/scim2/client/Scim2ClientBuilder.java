@@ -1,172 +1,76 @@
 package dev.suvera.scim2.client;
 
 import dev.suvera.scim2.schema.ex.ScimException;
-import okhttp3.*;
-import okhttp3.FormBody.Builder;
-
-import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.X509ExtendedTrustManager;
 
-import java.io.IOException;
+import java.net.Socket;
+import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Base64;
 
 /**
  * author: suvera
  * date: 10/17/2020 2:26 PM
  */
-@SuppressWarnings({"RedundantThrows", "FieldCanBeLocal", "unused"})
+@SuppressWarnings({"RedundantThrows", "unused"})
 public class Scim2ClientBuilder {
+    // Same values as the previous OkHttp client (connect and read timeouts).
+    private static final Duration TIMEOUT = Duration.ofSeconds(1200000);
+
     private final String endPoint;
-    private final OkHttpClient.Builder builder;
-    private static final boolean DEBUG = true;
-    private boolean debugEnabled = false;
+    private final HttpClient.Builder httpClientBuilder;
+    private RequestAuthorizer authorizer;
     private String spConfigJson;
     private String resourceTypesJson;
     private String schemasJson;
 
     public Scim2ClientBuilder(String endPoint) {
         this.endPoint = endPoint;
-        builder = new OkHttpClient.Builder()
-                .connectTimeout(1200000, TimeUnit.SECONDS)
-                .readTimeout(1200000, TimeUnit.SECONDS);
-
-        if (DEBUG) {
-            builder.networkInterceptors().add(new HttpLoggingInterceptor("NETWORK"));
-            builder.interceptors().add(new HttpLoggingInterceptor("APP"));
-            debugEnabled = true;
-        }
+        // HTTP/1.1 like before: avoids the h2c upgrade headers HttpClient sends on plain-HTTP URLs by default.
+        this.httpClientBuilder = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(TIMEOUT);
     }
 
     public Scim2Client build() throws ScimException {
-        return new Scim2ClientImpl(endPoint, builder.build(), spConfigJson, resourceTypesJson, schemasJson);
+        return new Scim2ClientImpl(endPoint, buildTransport(), spConfigJson, resourceTypesJson, schemasJson);
     }
 
+    ScimHttpTransport buildTransport() {
+        return new ScimHttpTransport(httpClientBuilder.build(), TIMEOUT, authorizer);
+    }
+
+    /**
+     * Kept for API compatibility: requests and responses are always logged at debug level
+     * (category {@code dev.suvera.scim2.client.ScimHttpTransport}).
+     */
     public Scim2ClientBuilder enableDebugging() {
-        if (!debugEnabled) {
-            builder.networkInterceptors().add(new HttpLoggingInterceptor("NETWORK"));
-            builder.interceptors().add(new HttpLoggingInterceptor("APP"));
-            debugEnabled = true;
-        }
         return this;
     }
 
     public Scim2ClientBuilder usernamePassword(String username, String password) {
-        builder.authenticator(new BasicAuthenticator(username, password));
+        String credentials = Base64.getEncoder()
+                .encodeToString((username + ":" + password).getBytes(StandardCharsets.ISO_8859_1));
+        authorizer = RequestAuthorizer.fixed("Basic " + credentials);
         return this;
     }
 
     public Scim2ClientBuilder bearerToken(String token) {
-        builder.authenticator(new BearerAuthenticator(token));
+        authorizer = RequestAuthorizer.fixed("Bearer " + token);
         return this;
     }
 
     public Scim2ClientBuilder clientSecret(String authorityUrl, String username, String password, String clientId, String clientSecret) {
-        String tokenKey = "tokenKey";
-
-        LoadingCache<String, Token> tokenCache = CacheBuilder.newBuilder().build(
-            new CacheLoader<String, Token>() {
-
-                @Override
-                public Token load(String key) throws Exception {
-                    if (key.equals(tokenKey)) {
-                        OkHttpClient client = new OkHttpClient();
-
-                        Builder builder = new FormBody.Builder();
-
-                        if (clientId != null) {
-                            builder.add("client_id", clientId);
-
-                            if (clientSecret != null) {
-                                builder.add("client_secret", clientSecret);
-                            }
-
-                            if (username != null && password != null) {
-                                builder
-                                    .add("username", username)
-                                    .add("password", password)
-                                    .add("grant_type", "password");
-                            } else {
-                                builder.add("grant_type", "client_credentials");
-                            }
-                        }
-                        
-                        RequestBody body = builder.build();
-    
-                        Request tokenRequest = new Request.Builder()
-                        .url(StringUtils.strip(authorityUrl, "/") + "/protocol/openid-connect/token")
-                        .post(body)
-                        .build();
-                        
-                        Response tokenResponse = client.newCall(tokenRequest).execute();
-                        if (!tokenResponse.isSuccessful()) {
-                            return null;
-                        }
-    
-                        ObjectMapper mapper = new ObjectMapper();
-                        return mapper.readValue(tokenResponse.body().string(), Token.class);
-                    }
-                    return null;
-                }
-            }
-        );
-
-        builder.addInterceptor(new Interceptor() {
-
-            @Override
-            public Response intercept(Chain chain) throws IOException {
-                Request authenticatedRequest = tokenRequest(tokenKey, tokenCache, chain.request());
-
-                if (authenticatedRequest != null) {
-                    return chain.proceed(authenticatedRequest);
-                }
-                return chain.proceed(chain.request());
-            }
-
-        });
-        
-        builder.authenticator(new Authenticator() {
-
-            @Override
-            @javax.annotation.Nullable
-            public Request authenticate(@javax.annotation.Nullable Route route, Response response) throws IOException {
-                tokenCache.invalidate(tokenKey);
-
-                return tokenRequest(tokenKey, tokenCache, response.request());
-            }
-            
-        });
+        authorizer = new OAuthTokenAuthorizer(authorityUrl, username, password, clientId, clientSecret);
         return this;
-    }
-
-    private Request tokenRequest(String tokenKey, LoadingCache<String, Token> tokenCache, Request request) {
-        Token token = null;
-        try {
-            token = tokenCache.get(tokenKey);
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-
-        if (token != null) {
-            return request.newBuilder()
-            .header("Authorization", "Bearer " + token.getAccessToken())
-            .build();
-        }
-        return null;
     }
 
     public Scim2ClientBuilder serviceProviderConfig(String spConfigJson) {
@@ -184,76 +88,57 @@ public class Scim2ClientBuilder {
         return this;
     }
 
+    /**
+     * When {@code true}, the SCIM endpoint's TLS certificate and host name are not verified. This applies to this
+     * client only (not to the token endpoint, and not JVM-wide). Use only for test setups with self-signed certificates.
+     */
     public Scim2ClientBuilder allowSelfSigned(boolean flag) {
         if (!flag) {
             return this;
         }
 
         try {
-            TrustManager trustAll = new X509TrustManager() {
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType)
-                        throws CertificateException {
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType)
-                        throws CertificateException {
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new java.security.cert.X509Certificate[]{};
-                }
-            };
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            TrustManager[] trustManagers = new TrustManager[]{trustAll};
-
-            sslContext.init(null, trustManagers, new SecureRandom());
-            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagers[0]);
-            builder.hostnameVerifier((hostname, session) -> true);
-        } catch (Exception e) {
-            e.printStackTrace();
+            sslContext.init(null, new TrustManager[]{new TrustAllTrustManager()}, new SecureRandom());
+            httpClientBuilder.sslContext(sslContext);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Could not create TLS context", e);
         }
-
         return this;
     }
 
-    @SuppressWarnings("RedundantThrows")
-    private static class BasicAuthenticator implements Authenticator {
-        private final String username;
-        private final String password;
-
-        public BasicAuthenticator(String username, String password) {
-            this.username = username;
-            this.password = password;
-        }
-
-        @Nullable
+    /**
+     * Accepts every certificate. It must be an {@link X509ExtendedTrustManager}: JSSE performs the host name check
+     * inside the trust manager, and wraps a plain X509TrustManager in one that still checks the host name.
+     */
+    private static final class TrustAllTrustManager extends X509ExtendedTrustManager {
         @Override
-        public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
-            String credential = Credentials.basic(username, password);
-            return response.request()
-                    .newBuilder()
-                    .header("Authorization", credential).build();
-        }
-    }
-
-    @SuppressWarnings("RedundantThrows")
-    private static class BearerAuthenticator implements Authenticator {
-        private final String token;
-
-        public BearerAuthenticator(String token) {
-            this.token = token;
+        public void checkClientTrusted(X509Certificate[] chain, String authType) {
         }
 
-        @Nullable
         @Override
-        public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
-            return response.request().newBuilder()
-                    .header("Authorization", "Bearer " + token)
-                    .build();
+        public void checkServerTrusted(X509Certificate[] chain, String authType) {
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket) {
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket) {
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine) {
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine) {
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
         }
     }
 }
-
