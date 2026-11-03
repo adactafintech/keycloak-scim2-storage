@@ -90,11 +90,11 @@
             </exclusions>
         </dependency>
 
+        <!-- Bundled: Keycloak 26.2.5 has the jar on disk but not on its runtime classpath -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
             <version>${validation-api.version}</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
