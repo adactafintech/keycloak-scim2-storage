@@ -23,7 +23,7 @@
         <version.resteasy>6.2.10.Final</version.resteasy>
 
         <guava.version>33.1.0-jre</guava.version>
-        <commons.text.version>1.8</commons.text.version>
+        <commons.text.version>1.15.0</commons.text.version>
         <commons.lang.version>3.10</commons.lang.version>
         <commons.coll.version>4.4</commons.coll.version>
         <commons.io.version>2.7</commons.io.version>
