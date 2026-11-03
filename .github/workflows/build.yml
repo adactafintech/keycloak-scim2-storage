@@ -1,0 +1,54 @@
+# Reusable build + integration test matrix, called by ci.yml and release.yml.
+# The supported Keycloak versions live ONLY here: add a version by adding one line to the matrix.
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      upload-jars:
+        description: Upload the jar-with-dependencies of each Keycloak version as a workflow artifact
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: Keycloak ${{ matrix.keycloak }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        keycloak:
+          - 24.0.4
+          - 26.2.5
+          - 26.5.6
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # The run-integration-tests profile runs the tests in the integration-test phase,
+      # after package has built the jar that UserSyncTests mounts into the Keycloak container.
+      - name: Build and test
+        run: mvn -B -ntp -Dkeycloak.version=${{ matrix.keycloak }} -P run-integration-tests verify
+
+      - name: Upload surefire reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-reports-keycloak-${{ matrix.keycloak }}
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+
+      - name: Upload jar
+        if: inputs.upload-jars
+        uses: actions/upload-artifact@v7
+        with:
+          name: jar-keycloak-${{ matrix.keycloak }}
+          path: target/scim2-provisioning-keycloak-${{ matrix.keycloak }}-jar-with-dependencies.jar
+          if-no-files-found: error
+          retention-days: 7

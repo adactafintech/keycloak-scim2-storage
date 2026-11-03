@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+# Queue releases instead of cancelling a running one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# Read-only by default; only the release job, which creates the tag and release, can write.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      upload-jars: true
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read version and check tag
+        id: version
+        run: |
+          version=$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('pom.xml').getroot().find('{http://maven.apache.org/POM/4.0.0}version').text.strip())")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$version" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag \`$version\` already exists; no release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download jars
+        if: steps.version.outputs.exists == 'false'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: jar-keycloak-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create tag and GitHub Release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" dist/*.jar \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --generate-notes
+          echo "Released [$VERSION](${{ github.server_url }}/${{ github.repository }}/releases/tag/$VERSION)" >> "$GITHUB_STEP_SUMMARY"
