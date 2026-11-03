@@ -69,6 +69,12 @@
                 <artifactId>okio</artifactId>
                 <version>1.17.6</version>
             </dependency>
+            <dependency>
+                <!-- via json-schema-core; CVE-2025-66453 fixed in 1.7.15.1 -->
+                <groupId>org.mozilla</groupId>
+                <artifactId>rhino</artifactId>
+                <version>1.7.15.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
