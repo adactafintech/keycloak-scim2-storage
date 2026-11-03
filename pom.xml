@@ -35,7 +35,7 @@
         <json-schema-validator.version>2.2.14</json-schema-validator.version>
         <validation-api.version>3.0.2</validation-api.version>
         <bean.validator.version>7.0.1.Final</bean.validator.version>
-        <log4j.version>2.23.1</log4j.version>
+        <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <jetbrains-annotations.version>24.1.0</jetbrains-annotations.version>
 
         <arquillian.version>1.8.0.Final</arquillian.version>
@@ -43,6 +43,26 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <mockserver.version>5.15.0</mockserver.version>
     </properties>
+
+    <!-- Transitive dependencies of bundled libraries that every supported Keycloak version already ships -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- via hibernate-validator -->
+                <groupId>com.fasterxml</groupId>
+                <artifactId>classmate</artifactId>
+                <version>1.5.1</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <!-- via org.glassfish:jakarta.el -->
+                <groupId>jakarta.el</groupId>
+                <artifactId>jakarta.el-api</artifactId>
+                <version>4.0.0</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <repositories>
         <repository>
@@ -74,6 +94,7 @@
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
             <version>${validation-api.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -86,6 +107,7 @@
             <groupId>jakarta.mail</groupId>
             <artifactId>jakarta.mail-api</artifactId>
             <version>2.1.3</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -97,18 +119,15 @@
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator-annotation-processor</artifactId>
             <version>${bean.validator.version}</version>
+            <scope>provided</scope>
         </dependency>
 
-        <!-- Logging -->
+        <!-- Logging: JBoss Logging is provided by Keycloak -->
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>${log4j.version}</version>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+            <version>${jboss-logging.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- EOC -->
@@ -124,18 +143,27 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Keycloak ships Guava but not failureaccess, which Guava's LoadingCache needs at runtime -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>failureaccess</artifactId>
+            <version>1.0.2</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons.lang.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons.io.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -148,24 +176,28 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>${commons.coll.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
             <version>${jackson.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>${jackson.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -214,6 +246,7 @@
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>${jetbrains-annotations.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Test dependencies -->
