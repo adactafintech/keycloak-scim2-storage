@@ -129,12 +129,6 @@
             <version>${guava.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Keycloak ships Guava but not failureaccess, which Guava's LoadingCache needs at runtime -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>failureaccess</artifactId>
-            <version>1.0.2</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
