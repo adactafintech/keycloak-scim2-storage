@@ -15,7 +15,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
@@ -75,7 +74,7 @@ public class UserSyncTests {
 
     private static final ToStringConsumer keycloakLogs = new ToStringConsumer();
 
-    @ClassRule
+    // Started and stopped in beforeTestClass/afterTestClass: Testcontainers 2.x containers are no longer JUnit 4 rules.
     public static GenericContainer<?> keycloak = new GenericContainer<>("quay.io/keycloak/keycloak:" + KEYCLOAK_VERSION)
         .withExposedPorts(KEYCLOAK_PORT, DEBUG_PORT)
         .withCommand("start-dev --debug")
@@ -101,6 +100,7 @@ public class UserSyncTests {
 
     @BeforeClass
     public static void beforeTestClass() throws IOException {
+        keycloak.start();
         testsHelper = new FluentTestsHelperWithUserUpdate("http://%s:%s".formatted(keycloak.getHost(), keycloak.getMappedPort(KEYCLOAK_PORT)),
                 "admin", "admin",
                 FluentTestsHelper.DEFAULT_ADMIN_REALM,
@@ -114,6 +114,7 @@ public class UserSyncTests {
         if (testsHelper != null) {
             testsHelper.close();
         }
+        keycloak.stop();
     }
 
     @Before
