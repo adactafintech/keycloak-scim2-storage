@@ -22,25 +22,29 @@
         <version.keycloak.client>26.0.4</version.keycloak.client>
         <version.resteasy>6.2.10.Final</version.resteasy>
 
+        <!-- guava, commons-lang3, commons-io and commons-collections4 are provided by Keycloak (not bundled).
+             Their versions here only affect compilation; keep them no newer than what the oldest supported
+             Keycloak (24.0.4) ships, so no API is used that is missing at runtime. Guava: only long-stable APIs are used. -->
         <guava.version>33.1.0-jre</guava.version>
-        <commons.text.version>1.8</commons.text.version>
-        <commons.lang.version>3.10</commons.lang.version>
+        <commons.text.version>1.15.0</commons.text.version>
+        <commons.lang.version>3.14.0</commons.lang.version>
         <commons.coll.version>4.4</commons.coll.version>
-        <commons.io.version>2.7</commons.io.version>
+        <commons.io.version>2.15.1</commons.io.version>
 
         <jackson.version>2.17.0</jackson.version>
-        <lombok.version>1.18.32</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
         <okhttp.version>3.14.9</okhttp.version>
 
         <json-schema-validator.version>2.2.14</json-schema-validator.version>
         <validation-api.version>3.0.2</validation-api.version>
-        <bean.validator.version>7.0.1.Final</bean.validator.version>
+        <!-- 8.0.x is the latest line implementing Jakarta Validation 3.0 (bundled validation-api 3.0.2) -->
+        <bean.validator.version>8.0.6.Final</bean.validator.version>
         <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <jetbrains-annotations.version>24.1.0</jetbrains-annotations.version>
 
-        <arquillian.version>1.8.0.Final</arquillian.version>
+        <arquillian.version>1.10.2.Final</arquillian.version>
         <junit.version>4.13.2</junit.version>
-        <testcontainers.version>1.21.4</testcontainers.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <mockserver.version>5.15.0</mockserver.version>
     </properties>
 
@@ -60,6 +64,20 @@
                 <artifactId>jakarta.el-api</artifactId>
                 <version>4.0.0</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <!-- Security patch pins for transitive dependencies that are bundled -->
+            <dependency>
+                <!-- via okhttp 3.14.9; CVE-2023-3635 fixed in 1.17.6 -->
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>1.17.6</version>
+            </dependency>
+            <dependency>
+                <!-- via json-schema-core; CVE-2025-66453 fixed in 1.7.15.1 -->
+                <groupId>org.mozilla</groupId>
+                <artifactId>rhino</artifactId>
+                <version>1.7.15.1</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -407,7 +425,43 @@
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.16.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.6.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.5.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.2.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.transformer</groupId>
+                    <artifactId>transformer-maven-plugin</artifactId>
+                    <version>1.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.2.0</version>
                     <configuration>
                         <skip>true</skip>
                     </configuration>
@@ -422,10 +476,13 @@
                     <skipTests>true</skipTests>
                 </configuration>
             </plugin>
+            <!-- Stay on 3.6.0: 3.7.0+ resolves the jar-with-dependencies set without the project's
+                 dependency mediation and bundles transitive copies of Keycloak-provided libraries
+                 (Jackson, Guava, commons-lang3, jboss-logging) despite their provided declarations. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.6.0</version>
                 <configuration>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -449,7 +506,7 @@
             <plugin>
                 <groupId>org.wildfly.plugins</groupId>
                 <artifactId>wildfly-maven-plugin</artifactId>
-                <version>5.0.0.Final</version>
+                <version>5.1.5.Final</version>
                 <configuration>
                     <skip>false</skip>
                 </configuration>
