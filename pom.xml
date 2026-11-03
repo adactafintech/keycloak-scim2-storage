@@ -440,10 +440,13 @@
                     <skipTests>true</skipTests>
                 </configuration>
             </plugin>
+            <!-- Stay on 3.6.0: 3.7.0+ resolves the jar-with-dependencies set without the project's
+                 dependency mediation and bundles transitive copies of Keycloak-provided libraries
+                 (Jackson, Guava, commons-lang3, jboss-logging) despite their provided declarations. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.6.0</version>
                 <configuration>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
