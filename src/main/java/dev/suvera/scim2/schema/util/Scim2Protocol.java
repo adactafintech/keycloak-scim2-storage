@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jackson.JsonLoader;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import dev.suvera.scim2.schema.ScimConstant;
@@ -237,21 +235,6 @@ public class Scim2Protocol {
                 resourceType.setSchemaExtensionObjects(schemaExtObjects);
             }
 
-            JsonSchemaBuilder builder = new JsonSchemaBuilder(
-                    resourceType.getSchemaObject(),
-                    resourceType.getSchemaExtensionObjects()
-            );
-
-            try {
-                JsonNode sNode = JsonLoader.fromString(builder.build());
-                if (DEBUG) {
-                    log.info(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(sNode));
-                }
-                resourceType.setJsonSchema(JsonSchemaFactory.byDefault().getJsonSchema(sNode));
-            } catch (Exception e) {
-                throw new ScimException("JSON Schema generation failed", e);
-            }
-
         } // for loop
 
 
@@ -328,13 +311,6 @@ public class Scim2Protocol {
                     + " expected value is one of [204, 404]"
                     , buildErrorBody(response.getBody()));
         }
-
-        try {
-            JsonSchemaUtil.validate(response.getBody(), resourceType.getJsonSchema());
-        } catch (Exception e) {
-            throw new ScimException("Resource data object read for "
-                    + resourceType.getName() + " is not following Schema.", e);
-        }
     }
 
     private void validateCreateResponse(
@@ -352,13 +328,6 @@ public class Scim2Protocol {
                     + " expected value is one of [201]"
                     , buildErrorBody(response.getBody()));
         }
-
-        try {
-            JsonSchemaUtil.validate(response.getBody(), resourceType.getJsonSchema());
-        } catch (Exception e) {
-            throw new ScimException("Resource data object created for "
-                    + resourceType.getName() + " is not following Schema.", e);
-        }
     }
 
     private void validateReplaceResponse(
@@ -375,13 +344,6 @@ public class Scim2Protocol {
                     + " while updating a resource of type " + resourceType.getName()
                     + " expected value is one of [200]"
                     , buildErrorBody(response.getBody()));
-        }
-
-        try {
-            JsonSchemaUtil.validate(response.getBody(), resourceType.getJsonSchema());
-        } catch (Exception e) {
-            throw new ScimException("Resource data object updated for "
-                    + resourceType.getName() + " is not following Schema.", e);
         }
     }
 

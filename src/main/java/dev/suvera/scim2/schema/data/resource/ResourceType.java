@@ -2,7 +2,6 @@ package dev.suvera.scim2.schema.data.resource;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.github.fge.jsonschema.main.JsonSchema;
 import com.google.common.base.Objects;
 import dev.suvera.scim2.schema.data.BaseRecord;
 import dev.suvera.scim2.schema.data.schema.Schema;
@@ -33,8 +32,6 @@ public class ResourceType extends BaseRecord {
     private Schema schemaObject;
     @JsonIgnore
     private Set<SchemaExtension> schemaExtensionObjects = new HashSet<>();
-    @JsonIgnore
-    private JsonSchema jsonSchema;
 
     @Override
     public boolean equals(Object o) {
