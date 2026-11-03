@@ -45,7 +45,7 @@
         <arquillian.version>1.10.2.Final</arquillian.version>
         <junit.version>4.13.2</junit.version>
         <testcontainers.version>2.0.5</testcontainers.version>
-        <mockserver.version>5.15.0</mockserver.version>
+        <mockserver.version>9.2.0</mockserver.version>
     </properties>
 
     <!-- Transitive dependencies of bundled libraries that every supported Keycloak version already ships -->
