@@ -42,7 +42,7 @@
         <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <jetbrains-annotations.version>24.1.0</jetbrains-annotations.version>
 
-        <arquillian.version>1.8.0.Final</arquillian.version>
+        <arquillian.version>1.10.2.Final</arquillian.version>
         <junit.version>4.13.2</junit.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <mockserver.version>5.15.0</mockserver.version>
