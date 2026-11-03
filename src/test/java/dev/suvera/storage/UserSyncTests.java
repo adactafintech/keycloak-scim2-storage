@@ -91,8 +91,7 @@ public class UserSyncTests {
     public TestWatcher dumpKeycloakLogOnFailure = new TestWatcher() {
         @Override
         protected void failed(Throwable e, Description description) {
-            String[] lines = keycloakLogs.toUtf8String().split("
-");
+            String[] lines = keycloakLogs.toUtf8String().split("\\R");
             System.out.println("===== Keycloak log for failed test " + description.getMethodName() + " (last 200 lines) =====");
             for (int i = Math.max(0, lines.length - 200); i < lines.length; i++) {
                 System.out.println(lines[i]);
