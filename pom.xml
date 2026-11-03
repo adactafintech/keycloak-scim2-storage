@@ -34,7 +34,8 @@
 
         <json-schema-validator.version>2.2.14</json-schema-validator.version>
         <validation-api.version>3.0.2</validation-api.version>
-        <bean.validator.version>7.0.1.Final</bean.validator.version>
+        <!-- 8.0.x is the latest line implementing Jakarta Validation 3.0 (bundled validation-api 3.0.2) -->
+        <bean.validator.version>8.0.6.Final</bean.validator.version>
         <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <jetbrains-annotations.version>24.1.0</jetbrains-annotations.version>
 
