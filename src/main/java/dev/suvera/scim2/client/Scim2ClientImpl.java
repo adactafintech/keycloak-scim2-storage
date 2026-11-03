@@ -21,8 +21,7 @@ import dev.suvera.scim2.schema.util.UrlUtil;
 import lombok.Data;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -37,7 +36,7 @@ import static dev.suvera.scim2.schema.ScimConstant.*;
 @SuppressWarnings({ "unused", "FieldCanBeLocal" })
 @Data
 public class Scim2ClientImpl implements Scim2Client {
-    private final static Logger log = LogManager.getLogger(Scim2ClientImpl.class);
+    private final static Logger log = Logger.getLogger(Scim2ClientImpl.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final boolean DEBUG = false;
 
@@ -87,7 +86,7 @@ public class Scim2ClientImpl implements Scim2Client {
             }
         } catch (ScimException e) {
             if (spConfigJson != null && !spConfigJson.isEmpty()) {
-                log.info("Could not get response from {}, Using Default Json for ServiceProviderConfig", PATH_SP);
+                log.infof("Could not get response from %s, Using Default Json for ServiceProviderConfig", PATH_SP);
                 spResponse = new ScimResponse(200, spConfigJson, headers);
             } else {
                 throw e;
@@ -110,7 +109,7 @@ public class Scim2ClientImpl implements Scim2Client {
             }
         } catch (ScimException e) {
             if (resourceTypesJson != null && !resourceTypesJson.isEmpty()) {
-                log.info("Could not get response from {}, Using Default Json for ResourceTypes", PATH_RESOURCETYPES);
+                log.infof("Could not get response from %s, Using Default Json for ResourceTypes", PATH_RESOURCETYPES);
                 rtResponse = new ScimResponse(200, resourceTypesJson, headers);
             } else {
                 throw e;
@@ -133,7 +132,7 @@ public class Scim2ClientImpl implements Scim2Client {
             }
         } catch (ScimException e) {
             if (schemasJson != null && !schemasJson.isEmpty()) {
-                log.info("Could not get response from {}, Using Default Json for Schemas", PATH_SCHEMAS);
+                log.infof("Could not get response from %s, Using Default Json for Schemas", PATH_SCHEMAS);
                 schemasResponse = new ScimResponse(200, schemasJson, headers);
             } else {
                 throw e;
@@ -152,7 +151,7 @@ public class Scim2ClientImpl implements Scim2Client {
             throw new ScimException("Client Exception, empty Path");
         }
 
-        log.info("Http {} request {}", method, path);
+        log.infof("Http %s request %s", method, path);
         path = StringUtils.stripStart(path, " /");
         path = "/" + path;
 
@@ -343,7 +342,7 @@ public class Scim2ClientImpl implements Scim2Client {
             try {
                 patchResponse.setResource(mapToObject(response.getBody(), request.getRecordType()));
             } catch (ScimException e) {
-                log.error("Patch request has no Resource received. {}", e);
+                log.error("Patch request has no Resource received.", e);
             }
         }
 

@@ -16,7 +16,10 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.keycloak.client.registration.ClientRegistrationException;
 import org.keycloak.common.util.MultivaluedHashMap;
@@ -30,6 +33,7 @@ import org.mockserver.verify.VerificationTimes;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.ToStringConsumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -69,6 +73,8 @@ public class UserSyncTests {
     private static FluentTestsHelperWithUserUpdate testsHelper;
     private static ClientAndServer mockServer;
 
+    private static final ToStringConsumer keycloakLogs = new ToStringConsumer();
+
     @ClassRule
     public static GenericContainer<?> keycloak = new GenericContainer<>("quay.io/keycloak/keycloak:" + KEYCLOAK_VERSION)
         .withExposedPorts(KEYCLOAK_PORT, DEBUG_PORT)
@@ -77,7 +83,21 @@ public class UserSyncTests {
         .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
         .withEnv("DEBUG_PORT", "*:" + DEBUG_PORT)
         .withFileSystemBind("./target/" + PLUGIN_NAME, "/opt/keycloak/providers/" + PLUGIN_NAME, BindMode.READ_ONLY)
+        .withLogConsumer(keycloakLogs)
         .withStartupTimeout(Duration.ofMinutes(3));
+
+    // Print the Keycloak server log when a test fails; provider errors only show up there.
+    @Rule
+    public TestWatcher dumpKeycloakLogOnFailure = new TestWatcher() {
+        @Override
+        protected void failed(Throwable e, Description description) {
+            String[] lines = keycloakLogs.toUtf8String().split("\\R");
+            System.out.println("===== Keycloak log for failed test " + description.getMethodName() + " (last 200 lines) =====");
+            for (int i = Math.max(0, lines.length - 200); i < lines.length; i++) {
+                System.out.println(lines[i]);
+            }
+        }
+    };
 
     @BeforeClass
     public static void beforeTestClass() throws IOException {

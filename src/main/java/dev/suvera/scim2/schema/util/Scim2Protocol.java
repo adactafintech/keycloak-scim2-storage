@@ -23,8 +23,7 @@ import dev.suvera.scim2.schema.enums.ScimOperation;
 import dev.suvera.scim2.schema.ex.ScimException;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.jboss.logging.Logger;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 
 import jakarta.validation.ConstraintViolation;
@@ -42,7 +41,7 @@ import java.util.Set;
 @SuppressWarnings({"unused"})
 @Data
 public class Scim2Protocol {
-    private final static Logger log = LogManager.getLogger(Scim2Protocol.class);
+    private final static Logger log = Logger.getLogger(Scim2Protocol.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Validator beanValidator;
     private static final boolean DEBUG = false;
@@ -63,9 +62,9 @@ public class Scim2Protocol {
                 .getValidator();
 
         if (DEBUG) {
-            log.info("spResponse {}", spResponse);
-            log.info("resourceTypesResponse {}", resourceTypesResponse);
-            log.info("schemasResponse {}", schemasResponse);
+            log.infof("spResponse %s", spResponse);
+            log.infof("resourceTypesResponse %s", resourceTypesResponse);
+            log.infof("schemasResponse %s", schemasResponse);
         }
 
         buildSpConfig(spResponse);
