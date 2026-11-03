@@ -61,6 +61,14 @@
                 <version>4.0.0</version>
                 <scope>provided</scope>
             </dependency>
+
+            <!-- Security patch pins for transitive dependencies that are bundled -->
+            <dependency>
+                <!-- via okhttp 3.14.9; CVE-2023-3635 fixed in 1.17.6 -->
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>1.17.6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
