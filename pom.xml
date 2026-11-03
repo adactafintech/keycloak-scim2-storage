@@ -32,7 +32,7 @@
         <commons.io.version>2.15.1</commons.io.version>
 
         <jackson.version>2.17.0</jackson.version>
-        <lombok.version>1.18.32</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
         <okhttp.version>3.14.9</okhttp.version>
 
         <json-schema-validator.version>2.2.14</json-schema-validator.version>
