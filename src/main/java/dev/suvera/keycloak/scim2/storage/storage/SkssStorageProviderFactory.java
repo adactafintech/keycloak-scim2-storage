@@ -51,6 +51,7 @@ public class SkssStorageProviderFactory implements UserStorageProviderFactory<Sk
                 .property()
                 .name("password")
                 .type(ProviderConfigProperty.PASSWORD)
+                .secret(true)
                 .label("Password")
                 .helpText("Password to access the scim resources")
                 .add()
@@ -64,7 +65,8 @@ public class SkssStorageProviderFactory implements UserStorageProviderFactory<Sk
 
                 .property()
                 .name("clientSecret")
-                .type(ProviderConfigProperty.STRING_TYPE)
+                .type(ProviderConfigProperty.PASSWORD)
+                .secret(true)
                 .label("Client Secret")
                 .helpText("Client secret to access the scim resources")
                 .add()
