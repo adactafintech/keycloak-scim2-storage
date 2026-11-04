@@ -1,6 +1,6 @@
-# Keycloak SCIM 2.0 Outbound Provisioning — Instructions for AI assistants
+# Keycloak SCIM 2.0 Outbound Provisioning — Agent Instructions
 
-This file exists twice with the same content: `.github/copilot-instructions.md` (GitHub Copilot) and `CLAUDE.md` (Claude Code). Keep them in sync.
+This is the single instructions file for AI coding agents (Claude Code, GitHub Copilot and others that read `AGENTS.md`). Do not add a `CLAUDE.md` or `.github/copilot-instructions.md` next to it: Claude Code reads `AGENTS.md` only when there is no `CLAUDE.md`.
 
 ## Build & Test
 
