@@ -1,13 +1,10 @@
 package dev.suvera.scim2.schema.data;
 
-import dev.suvera.scim2.schema.ex.ScimException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 
-import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 
@@ -41,16 +38,12 @@ public class ScimResponse {
         return headers.get(name);
     }
 
-    public static ScimResponse of(Response response) throws ScimException {
-        try {
-            ResponseBody body = response.body();
-            return new ScimResponse(
-                    response.code(),
-                    (body == null) ? null : body.string(),
-                    response.headers().toMultimap()
-            );
-        } catch (IOException e) {
-            throw new ScimException("Http Client error", e);
-        }
+    /** Header names are matched case-insensitively. */
+    public static ScimResponse of(HttpResponse<String> response) {
+        return new ScimResponse(
+                response.statusCode(),
+                response.body(),
+                response.headers().map()
+        );
     }
 }

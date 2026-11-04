@@ -43,6 +43,19 @@ A release is published when a merge to `master` changes the version in `pom.xml`
 to one that is not tagged yet. The supported Keycloak versions are listed in
 `.github/workflows/build.yml`.
 
+### TLS certificates of the SCIM server
+
+The SCIM server's TLS certificate and host name are verified against Keycloak's
+truststore. If your SCIM server uses a self-signed or private-CA certificate, add
+it to the Keycloak truststore (see the Keycloak "Configuring trusted certificates"
+guide).
+
+For test setups only, the provider setting **Trust any TLS certificate** turns off
+certificate and host name verification for the SCIM url. It is off by default.
+Versions before this setting existed always skipped verification, so after
+upgrading, providers that talk to a self-signed SCIM server need one of the two
+options above.
+
 ### Is your server is compliant to SCIM 2.0?
 
 Here is the tool to test the compliance level  https://github.com/suvera/scim2-compliance-test-utility

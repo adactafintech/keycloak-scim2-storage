@@ -33,9 +33,7 @@
 
         <jackson.version>2.17.0</jackson.version>
         <lombok.version>1.18.48</lombok.version>
-        <okhttp.version>3.14.9</okhttp.version>
 
-        <json-schema-validator.version>2.2.14</json-schema-validator.version>
         <validation-api.version>3.0.2</validation-api.version>
         <!-- 8.0.x is the latest line implementing Jakarta Validation 3.0 (bundled validation-api 3.0.2) -->
         <bean.validator.version>8.0.6.Final</bean.validator.version>
@@ -65,20 +63,6 @@
                 <version>4.0.0</version>
                 <scope>provided</scope>
             </dependency>
-
-            <!-- Security patch pins for transitive dependencies that are bundled -->
-            <dependency>
-                <!-- via okhttp 3.14.9; CVE-2023-3635 fixed in 1.17.6 -->
-                <groupId>com.squareup.okio</groupId>
-                <artifactId>okio</artifactId>
-                <version>1.17.6</version>
-            </dependency>
-            <dependency>
-                <!-- via json-schema-core; CVE-2025-66453 fixed in 1.7.15.1 -->
-                <groupId>org.mozilla</groupId>
-                <artifactId>rhino</artifactId>
-                <version>1.7.15.1</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -90,24 +74,6 @@
     </repositories>
 
     <dependencies>
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-            <version>${okhttp.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.java-json-tools</groupId>
-            <artifactId>json-schema-validator</artifactId>
-            <version>${json-schema-validator.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.sun.mail</groupId>
-                    <artifactId>mailapi</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
         <!-- Bundled: Keycloak 26.2.5 has the jar on disk but not on its runtime classpath -->
         <dependency>
             <groupId>jakarta.validation</groupId>
@@ -162,12 +128,6 @@
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- Keycloak ships Guava but not failureaccess, which Guava's LoadingCache needs at runtime -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>failureaccess</artifactId>
-            <version>1.0.2</version>
         </dependency>
 
         <dependency>

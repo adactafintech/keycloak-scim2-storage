@@ -100,7 +100,7 @@ public class ScimClient2 {
         }
 
         Scim2ClientBuilder builder = new Scim2ClientBuilder(endPoint)
-                .allowSelfSigned(true)
+                .allowSelfSigned(allowSelfSigned(componentModel))
                 .resourceTypes(resourceTypesJson)
                 .schemas(schemasJson)
                 .clientSecret(authorityUrl, username, password, clientId, clientSecret);
@@ -128,7 +128,12 @@ public class ScimClient2 {
         String clientId = componentModel.get("clientId");
         String clientSecret = componentModel.get("clientSecret");
 
-        return Objects.hash(endPoint, authorityUrl, username, password, clientId, clientSecret);
+        return Objects.hash(endPoint, authorityUrl, username, password, clientId, clientSecret, allowSelfSigned(componentModel));
+    }
+
+    /** Off unless explicitly enabled; providers created before this setting existed verify TLS. */
+    private static boolean allowSelfSigned(ComponentModel componentModel) {
+        return Boolean.parseBoolean(componentModel.get(SkssStorageProviderFactory.ALLOW_SELF_SIGNED));
     }
 
     private String inputStreamToString(InputStream is) {
