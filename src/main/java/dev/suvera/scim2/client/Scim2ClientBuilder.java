@@ -22,8 +22,11 @@ import java.util.Base64;
  */
 @SuppressWarnings({"RedundantThrows", "unused"})
 public class Scim2ClientBuilder {
-    // Same values as the previous OkHttp client (connect and read timeouts).
-    private static final Duration TIMEOUT = Duration.ofSeconds(1200000);
+    // The SCIM calls run synchronously inside Keycloak requests, so a server that is down must fail fast.
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    // Until the response headers arrive. Before, both timeouts were 1,200,000 seconds (about 14 days), most likely
+    // meant as milliseconds (20 minutes).
+    private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(20);
 
     private final String endPoint;
     private final HttpClient.Builder httpClientBuilder;
@@ -37,7 +40,7 @@ public class Scim2ClientBuilder {
         // HTTP/1.1 like before: avoids the h2c upgrade headers HttpClient sends on plain-HTTP URLs by default.
         this.httpClientBuilder = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(TIMEOUT);
+                .connectTimeout(CONNECT_TIMEOUT);
     }
 
     public Scim2Client build() throws ScimException {
@@ -45,7 +48,7 @@ public class Scim2ClientBuilder {
     }
 
     ScimHttpTransport buildTransport() {
-        return new ScimHttpTransport(httpClientBuilder.build(), TIMEOUT, authorizer);
+        return new ScimHttpTransport(httpClientBuilder.build(), REQUEST_TIMEOUT, authorizer);
     }
 
     /**
