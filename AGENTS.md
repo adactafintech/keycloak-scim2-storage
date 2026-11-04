@@ -40,7 +40,7 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
   Release with one jar per Keycloak version.
 - `keycloak-version-check.yml` (weekly and manual): when the latest stable Keycloak release is not in the
   matrix yet, opens a PR that adds it (via `.github/scripts/KeycloakVersions.java`). It uses a GitHub App
-  token (secrets `KEYCLOAK_BOT_APP_ID`, `KEYCLOAK_BOT_PRIVATE_KEY`) so that CI runs on the PR.
+  token (secrets `KEYCLOAK_BOT_CLIENT_ID`, `KEYCLOAK_BOT_PRIVATE_KEY`) so that CI runs on the PR.
 - Dependabot (`.github/dependabot.yml`, weekly): one grouped PR for GitHub Actions, one for Maven minor and
   patch updates, one per Maven major update. It ignores `org.keycloak:*`, the Keycloak-provided libraries
   (their versions follow the oldest supported Keycloak), `maven-assembly-plugin` 3.7.0+, and the
