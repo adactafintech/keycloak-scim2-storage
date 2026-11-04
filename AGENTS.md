@@ -24,7 +24,7 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
 - Use `-Dkeycloak.version=<version>`. The `keycloak-*` profiles in `pom.xml` are shortcuts for local builds;
   CI does not use them.
 - To add a Keycloak version, run `java .github/scripts/KeycloakVersions.java add <version>`: it updates the
-  matrix, adds a `pom.xml` profile and a row to the README table.
+  matrix and adds a `pom.xml` profile.
 - Tests are **skipped by default**. The `run-integration-tests` profile enables them and runs them in the
   `integration-test` phase (after `package`), because `UserSyncTests` mounts
   `target/*-jar-with-dependencies.jar` into a real Keycloak container via Testcontainers. So use

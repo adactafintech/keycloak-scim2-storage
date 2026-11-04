@@ -7,14 +7,8 @@ the SCIM server through a job queue with retries.
 
 ## Supported Keycloak versions
 
-| Keycloak | Jar |
-|---|---|
-| 26.5.6 | `scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar` |
-| 26.2.5 | `scim2-provisioning-keycloak-26.2.5-jar-with-dependencies.jar` |
-| 24.0.4 | `scim2-provisioning-keycloak-24.0.4-jar-with-dependencies.jar` |
-
-Use the jar built for your Keycloak version. The list of supported versions lives in
-[`.github/workflows/build.yml`](.github/workflows/build.yml); CI builds and tests every one.
+See the [latest release](https://github.com/adactafintech/keycloak-scim2-storage/releases/latest):
+it has one jar for each supported Keycloak version.
 
 ## Installation
 

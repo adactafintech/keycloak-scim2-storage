@@ -15,15 +15,14 @@ import java.util.regex.Pattern;
  * Usage (from the repository root):
  *   java .github/scripts/KeycloakVersions.java list           prints the versions in the build.yml matrix, one per line
  *   java .github/scripts/KeycloakVersions.java add <version>  adds a version to the build.yml matrix (the single source
- *                                                             of truth), a keycloak-X-Y-Z profile to pom.xml for local
- *                                                             builds and a row to the README table
+ *                                                             of truth) and a keycloak-X-Y-Z profile to pom.xml for
+ *                                                             local builds
  *
  * Fails (exit 1) when a file does not have the expected shape, so the workflow never opens a half-edited PR.
  */
 public class KeycloakVersions {
     private static final Path BUILD_YML = Path.of(".github/workflows/build.yml");
     private static final Path POM = Path.of("pom.xml");
-    private static final Path README = Path.of("README.md");
 
     private static final Pattern VERSION = Pattern.compile("\\d+\\.\\d+\\.\\d+");
     private static final Pattern MATRIX_KEY = Pattern.compile("^(\\s*)keycloak:\\s*$");
@@ -52,7 +51,6 @@ public class KeycloakVersions {
 
         write(BUILD_YML, replaceMatrix(read(BUILD_YML), updated));
         write(POM, addProfile(read(POM), version));
-        write(README, addReadmeRow(read(README), version));
     }
 
     /** The items of the first "keycloak:" list in build.yml (the build matrix). */
@@ -111,32 +109,6 @@ public class KeycloakVersions {
         out.add(indent + "</profile>");
         out.addAll(lines.subList(end, lines.size()));
         return out;
-    }
-
-    /** The table under "## Supported Keycloak versions" lists the newest version first. */
-    private static List<String> addReadmeRow(List<String> lines, String version) {
-        int heading = indexOf(lines, l -> l.trim().equals("## Supported Keycloak versions"),
-                README + ": no '## Supported Keycloak versions' heading");
-        int separator = indexOf(lines, l -> l.startsWith("|---"), README + ": no version table");
-        if (separator < heading) {
-            fail(README + ": the version table is not under the heading");
-        }
-        int at = separator + 1;
-        while (at < lines.size() && lines.get(at).startsWith("|")
-                && BY_VERSION.compare(rowVersion(lines.get(at)), version) > 0) {
-            at++;
-        }
-        List<String> out = new ArrayList<>(lines);
-        out.add(at, "| " + version + " | `scim2-provisioning-keycloak-" + version + "-jar-with-dependencies.jar` |");
-        return out;
-    }
-
-    private static String rowVersion(String row) {
-        Matcher m = VERSION.matcher(row);
-        if (!m.find()) {
-            fail(README + ": no version in table row: " + row);
-        }
-        return m.group();
     }
 
     private static int indexOf(List<String> lines, java.util.function.Predicate<String> p, String error) {
