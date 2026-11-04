@@ -73,6 +73,9 @@
             <version>${validation-api.version}</version>
         </dependency>
 
+        <!-- Bundled and required although our code does not use EL: Hibernate ORM in Keycloak builds the
+             default ValidatorFactory from the bundled hibernate-validator, which needs an EL implementation.
+             Without it, Keycloak 26.5.6 fails to start (HV000183); no supported Keycloak ships one. -->
         <dependency>
             <groupId>org.glassfish</groupId>
             <artifactId>jakarta.el</artifactId>
