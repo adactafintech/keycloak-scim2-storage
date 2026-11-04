@@ -26,7 +26,6 @@
              Their versions here only affect compilation; keep them no newer than what the oldest supported
              Keycloak (24.0.4) ships, so no API is used that is missing at runtime. Guava: only long-stable APIs are used. -->
         <guava.version>33.1.0-jre</guava.version>
-        <commons.text.version>1.15.0</commons.text.version>
         <commons.lang.version>3.14.0</commons.lang.version>
         <commons.coll.version>4.4</commons.coll.version>
         <commons.io.version>2.15.1</commons.io.version>
@@ -66,13 +65,6 @@
         </dependencies>
     </dependencyManagement>
 
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
-
     <dependencies>
         <!-- Bundled: Keycloak 26.2.5 has the jar on disk but not on its runtime classpath -->
         <dependency>
@@ -81,6 +73,9 @@
             <version>${validation-api.version}</version>
         </dependency>
 
+        <!-- Bundled and required although our code does not use EL: Hibernate ORM in Keycloak builds the
+             default ValidatorFactory from the bundled hibernate-validator, which needs an EL implementation.
+             Without it, Keycloak 26.5.6 fails to start (HV000183); no supported Keycloak ships one. -->
         <dependency>
             <groupId>org.glassfish</groupId>
             <artifactId>jakarta.el</artifactId>
@@ -142,12 +137,6 @@
             <artifactId>commons-io</artifactId>
             <version>${commons.io.version}</version>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-text</artifactId>
-            <version>${commons.text.version}</version>
         </dependency>
 
         <dependency>
@@ -257,14 +246,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <version>2.35.0</version>
-            <type>pom</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.jboss.arquillian</groupId>
             <artifactId>arquillian-bom</artifactId>
             <version>${arquillian.version}</version>
@@ -332,33 +313,6 @@
             </build>
         </profile>
         <profile>
-            <id>transform-jakarta</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.eclipse.transformer</groupId>
-                        <artifactId>transformer-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>transform-source</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>transform</goal>
-                                </goals>
-                                <configuration>
-                                    <transformDirectory>src/main/java/dev/suvera/keycloak</transformDirectory>
-                                    <rules>
-                                        <jakartaDefaults>true</jakartaDefaults>
-                                        <invert>true</invert>
-                                    </rules>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>keycloak-24</id>
             <properties>
                 <keycloak.version>24.0.4</keycloak.version>
@@ -414,11 +368,6 @@
                     <version>3.2.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.eclipse.transformer</groupId>
-                    <artifactId>transformer-maven-plugin</artifactId>
-                    <version>1.0.0</version>
-                </plugin>
-                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
                     <version>3.2.0</version>
@@ -462,14 +411,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.wildfly.plugins</groupId>
-                <artifactId>wildfly-maven-plugin</artifactId>
-                <version>5.1.5.Final</version>
-                <configuration>
-                    <skip>false</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>

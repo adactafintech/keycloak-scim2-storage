@@ -1,47 +1,82 @@
 # Keycloak SCIM 2.0 outbound user provisioning
 
-**Keycloak** is an open source Identity and Access management system for modern applications and services.
+A [Keycloak](https://www.keycloak.org/) extension that provisions users, groups and
+role memberships from Keycloak to an external SCIM 2.0 service provider. It plugs into
+Keycloak as a User Federation provider plus an event listener, and pushes changes to
+the SCIM server through a job queue with retries.
 
-more info https://github.com/keycloak/keycloak
+## Supported Keycloak versions
 
+| Keycloak | Jar |
+|---|---|
+| 26.5.6 | `scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar` |
+| 26.2.5 | `scim2-provisioning-keycloak-26.2.5-jar-with-dependencies.jar` |
+| 24.0.4 | `scim2-provisioning-keycloak-24.0.4-jar-with-dependencies.jar` |
 
-This is extension to keycloak, where it provides capability of user provisioning to external scim service providers from keycloak identity server.
-
+Use the jar built for your Keycloak version. The list of supported versions lives in
+[`.github/workflows/build.yml`](.github/workflows/build.yml); CI builds and tests every one.
 
 ## Installation
 
-Download the jar for your Keycloak version from
-[GitHub Releases](https://github.com/adactafintech/keycloak-scim2-storage/releases/latest).
-Each release has one `scim2-provisioning-keycloak-<keycloak-version>-jar-with-dependencies.jar`
-per supported Keycloak version (currently 24.0.4, 26.2.5 and 26.5.6).
+> **Back up the Keycloak database first.** On its first start with the extension, Keycloak
+> creates the extension's tables (`SCIM_SYNC_JOB_QUEUE` and `FED_GROUP_ATTRIBUTE`) through
+> Liquibase.
 
-```
-# Take a backup of your Keycloak DB, this extension adds new tables.
+1. Download the jar for your Keycloak version from
+   [GitHub Releases](https://github.com/adactafintech/keycloak-scim2-storage/releases/latest).
+2. Copy it to the Keycloak providers directory:
 
-# Copy the jar into the Keycloak providers directory
-cp -f scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar /opt/keycloak/providers/
+   ```bash
+   cp scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar /opt/keycloak/providers/
+   ```
 
-# Rebuild and restart Keycloak
-/opt/keycloak/bin/kc.sh build
-```
+3. Rebuild Keycloak and restart it:
 
-### Building from source
+   ```bash
+   /opt/keycloak/bin/kc.sh build
+   # then restart Keycloak as you normally do, e.g.
+   /opt/keycloak/bin/kc.sh start
+   ```
 
-```
-mvn clean package -Dkeycloak.version=26.5.6
-# -> target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
+To upgrade, replace the jar in `providers/` with the new one and repeat step 3.
 
-# Integration tests (need Docker; they start Keycloak with the built jar)
-mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests
-```
+## Configuration
 
-The `keycloak-24`, `keycloak-26` and `keycloak-26-5-6` profiles still work for local builds.
+1. In the admin console, open the realm, go to **User federation** and choose
+   **Add Skss-scim2-storage providers**.
 
-### Releases
+   ![The provider on the User federation page](docs/images/user-federation.png)
 
-A release is published when a merge to `master` changes the version in `pom.xml`
-to one that is not tagged yet. The supported Keycloak versions are listed in
-`.github/workflows/build.yml`.
+2. Fill in the settings and save.
+
+   ![Provider settings](docs/images/provider-settings.png)
+
+   The plugin's settings:
+
+   | Setting | Required | Description |
+   |---|---|---|
+   | SCIM 2.0 url | yes | Base URL of the SCIM 2.0 server. |
+   | Authority url | yes | OpenID Connect realm (issuer) URL of the authority that protects the SCIM server; the token is requested from `<Authority url>/protocol/openid-connect/token`. |
+   | Client Id | yes | Client used to get the token. |
+   | Client Secret | | Secret of that client, if it is confidential. |
+   | Username, Password | | When both are set, the token is requested with the password grant; otherwise with client credentials. |
+   | Trust any TLS certificate | | Off by default. See [TLS certificates](#tls-certificates-of-the-scim-server). |
+   | Connect timeout (seconds) | | Default 10. See [Timeouts](#timeouts). |
+   | Request timeout (seconds) | | Default 100. See [Timeouts](#timeouts). |
+
+   The form also has Keycloak's own User Federation settings (periodic sync, cache policy).
+
+3. To push changes made in Keycloak as they happen, add `scim-event-listener` under
+   **Realm settings → Events → Event listeners** and save.
+
+   ![The scim-event-listener event listener](docs/images/event-listeners.png)
+
+4. Create a user (or change one): it is provisioned to the SCIM server.
+
+Existing users can be pushed with the provider's **Sync all users** and **Sync changed
+users** actions, or periodically with the periodic sync settings.
+
+The screenshots are from Keycloak 26.5.6.
 
 ### TLS certificates of the SCIM server
 
@@ -65,31 +100,37 @@ Two provider settings limit how long Keycloak waits for the SCIM server, in seco
 
 Leave a field empty to use the default.
 
-### Is your server is compliant to SCIM 2.0?
+### Is your SCIM server compliant with SCIM 2.0?
 
-Here is the tool to test the compliance level  https://github.com/suvera/scim2-compliance-test-utility
+You can test the compliance level with
+[scim2-compliance-test-utility](https://github.com/suvera/scim2-compliance-test-utility).
 
+## Building locally
 
-## User Provisioning Steps 
+Requirements: JDK 17 and Maven. The integration tests also need Docker (or a
+Docker-compatible engine such as Podman), because they start a real Keycloak in a container.
 
-1) Login to Keyclock as "admin"
+```bash
+# Build the jar for one Keycloak version (tests are skipped by default)
+mvn clean package -Dkeycloak.version=26.5.6
+# -> target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
 
-2) Select "User Federation" Add SCIM 2.0 Service Provider 
+# Build and run all tests, including the integration tests, against that version
+mvn clean verify -Dkeycloak.version=26.5.6 -P run-integration-tests
 
-![User Federation](https://suvera.github.io/assets/images/scim2_storage_01.png)
+# Run a single test class
+mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTests
+```
 
+Without `-Dkeycloak.version`, the build uses the default from `pom.xml` (26.5.6).
 
-3) Add new SCIM 2.0 User federation 
+## Releases
 
-    - **Bearer Token** Authentication also supported,  though it's not shown in the screenshot.
+A release is published when a merge to `master` changes the version in `pom.xml`
+to one that is not tagged yet. The release has one jar per supported Keycloak version.
+Pull requests show a "Release preview" check that says whether merging will publish one.
 
-![Add SCIM 2.0 User Federation](https://suvera.github.io/assets/images/scim2_storage_02.png)
+## Origin
 
-
-4) Now go to "Users -> Add New User" 
-
-![Add New User](https://suvera.github.io/assets/images/scim2_storage_03.png)
-
-
-5) That's it!, User will be added to your SCIM 2.0 Service provider too. 
-
+This project derives from
+[suvera/keycloak-scim2-storage](https://github.com/suvera/keycloak-scim2-storage).
