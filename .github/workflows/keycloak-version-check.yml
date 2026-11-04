@@ -1,0 +1,138 @@
+# Opens a PR that adds the latest stable Keycloak release to the supported versions
+# (the build.yml matrix, plus a pom.xml profile and the README/AGENTS.md lists), so CI tests it.
+#
+# The PR is opened with a GitHub App token: PRs opened with GITHUB_TOKEN do not trigger the CI workflow.
+# The App needs Contents, Pull requests and Workflows (because the PR edits build.yml) write access.
+name: Keycloak version check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: keycloak-version-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check for a new Keycloak release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ secrets.KEYCLOAK_BOT_APP_ID }}
+          private-key: ${{ secrets.KEYCLOAK_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Find the latest stable Keycloak release
+        id: latest
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Skip drafts, pre-releases (e.g. "nightly") and any tag that is not a plain major.minor.patch.
+          version=$(gh api 'repos/keycloak/keycloak/releases?per_page=100' \
+              --jq '.[] | select(.draft | not) | select(.prerelease | not) | .tag_name' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$version" ]; then
+            echo "::error::No stable Keycloak release found"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Latest stable Keycloak release: $version"
+
+      - name: Decide whether to open a PR
+        id: decide
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          branch="keycloak-version/$VERSION"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+          skip() {
+            echo "$1"
+            echo "$1" >> "$GITHUB_STEP_SUMMARY"
+            echo "open=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          supported=$(java .github/scripts/KeycloakVersions.java list)
+          if printf '%s\n' $supported | grep -qxF "$VERSION"; then
+            skip "Keycloak $VERSION is already supported ($(echo $supported | tr ' ' ','))."
+          fi
+
+          existing=$(gh pr list --state open --head "$branch" --json url --jq '.[0].url // empty')
+          if [ -n "$existing" ]; then
+            skip "A PR for Keycloak $VERSION is already open: $existing"
+          fi
+
+          # The CI build needs the Maven artifacts and the container image the tests start.
+          if ! curl -fsSI "https://repo1.maven.org/maven2/org/keycloak/keycloak-core/$VERSION/keycloak-core-$VERSION.pom" > /dev/null; then
+            skip "Keycloak $VERSION is not on Maven Central yet; the next run will try again."
+          fi
+          tags=$(curl -fsS "https://quay.io/api/v1/repository/keycloak/keycloak/tag/?specificTag=$VERSION&onlyActiveTags=true" \
+            | jq '.tags | length') || tags=0
+          if [ "$tags" = "0" ]; then
+            skip "quay.io/keycloak/keycloak:$VERSION is not published yet; the next run will try again."
+          fi
+
+          echo "open=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open the PR
+        if: steps.decide.outputs.open == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          VERSION: ${{ steps.latest.outputs.version }}
+          BRANCH: ${{ steps.decide.outputs.branch }}
+        run: |
+          user_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+          git switch -c "$BRANCH"
+          java .github/scripts/KeycloakVersions.java add "$VERSION"
+          git commit -am "Add Keycloak $VERSION to the supported versions"
+          # --force: a branch left over from an earlier, closed PR for this version is replaced.
+          git push --force origin "$BRANCH"
+
+          versions=$(java .github/scripts/KeycloakVersions.java list | paste -sd, - | sed 's/,/, /g')
+          cat > "$RUNNER_TEMP/body.md" <<EOF
+          Keycloak [$VERSION](https://github.com/keycloak/keycloak/releases/tag/$VERSION) is the latest stable release and is not supported yet.
+
+          This PR adds it to the build matrix in \`.github/workflows/build.yml\`, so CI builds and tests the plugin against it, and adds:
+          - a \`keycloak-${VERSION//./-}\` profile in \`pom.xml\` for local builds;
+          - a row in the README's supported versions table and the version in \`AGENTS.md\`.
+
+          Supported versions after merge: $versions.
+
+          Before merging:
+          - [ ] CI passes for every version (a failure on $VERSION means the plugin needs changes for it; push them to this branch).
+          - [ ] Check the [Keycloak release notes](https://www.keycloak.org/docs/latest/release_notes/index.html) and [upgrading guide](https://www.keycloak.org/docs/latest/upgrading/index.html) for SPI changes.
+          - [ ] Decide whether to drop an older version, change the default \`keycloak.version\` in \`pom.xml\`, or bump the project version to release a jar for $VERSION.
+
+          Opened by the [Keycloak version check](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.
+          EOF
+
+          url=$(gh pr create --base master --head "$BRANCH" \
+            --title "Add Keycloak $VERSION to the supported versions" \
+            --body-file "$RUNNER_TEMP/body.md")
+          echo "Opened $url"
+          echo "Opened $url for Keycloak $VERSION." >> "$GITHUB_STEP_SUMMARY"

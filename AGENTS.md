@@ -21,8 +21,10 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
 - Supported Keycloak versions: **24.0.4, 26.2.5, 26.5.6**. The single source of truth is the matrix in
   `.github/workflows/build.yml`; the default `keycloak.version` in `pom.xml` is 26.5.6. Check every change
   against all supported versions.
-- Use `-Dkeycloak.version=<version>`. The old `keycloak-24` / `keycloak-26` / `keycloak-26-5-6` profiles
-  still exist but CI does not use them.
+- Use `-Dkeycloak.version=<version>`. The `keycloak-*` profiles in `pom.xml` (`keycloak-24`, `keycloak-26`,
+  `keycloak-26-5-6`, and `keycloak-X-Y-Z` for versions added later) are shortcuts for local builds; CI does not use them.
+- To add a Keycloak version, run `java .github/scripts/KeycloakVersions.java add <version>`: it updates the
+  matrix, the `pom.xml` profile, the README table and the list above.
 - Tests are **skipped by default**. The `run-integration-tests` profile enables them and runs them in the
   `integration-test` phase (after `package`), because `UserSyncTests` mounts
   `target/*-jar-with-dependencies.jar` into a real Keycloak container via Testcontainers. So use
@@ -36,6 +38,13 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
   publish a release, and fails if the `pom.xml` version is lower than the highest tag.
 - `release.yml` (push to `master`): when the `pom.xml` version is not tagged yet, creates the tag and a GitHub
   Release with one jar per Keycloak version.
+- `keycloak-version-check.yml` (weekly and manual): when the latest stable Keycloak release is not in the
+  matrix yet, opens a PR that adds it (via `.github/scripts/KeycloakVersions.java`). It uses a GitHub App
+  token (secrets `KEYCLOAK_BOT_APP_ID`, `KEYCLOAK_BOT_PRIVATE_KEY`) so that CI runs on the PR.
+- Dependabot (`.github/dependabot.yml`, weekly): one grouped PR for GitHub Actions, one for Maven minor and
+  patch updates, one per Maven major update. It ignores `org.keycloak:*`, the Keycloak-provided libraries
+  (their versions follow the oldest supported Keycloak), `maven-assembly-plugin` 3.7.0+, and the
+  Jakarta Validation 3.1 / Hibernate Validator 9 upgrade. Keep these ignores in sync with `pom.xml`.
 
 ## Architecture
 

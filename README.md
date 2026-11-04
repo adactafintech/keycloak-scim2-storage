@@ -130,6 +130,10 @@ A release is published when a merge to `master` changes the version in `pom.xml`
 to one that is not tagged yet. The release has one jar per supported Keycloak version.
 Pull requests show a "Release preview" check that says whether merging will publish one.
 
+Dependabot opens weekly PRs for Maven and GitHub Actions updates. A weekly workflow opens a
+PR that adds each new stable Keycloak release to the supported versions, so CI tests it
+before it is supported.
+
 ## Origin
 
 This project derives from
