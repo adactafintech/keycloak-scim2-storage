@@ -23,6 +23,7 @@ public class SkssStorageProviderFactory implements UserStorageProviderFactory<Sk
     protected static final List<ProviderConfigProperty> configMetadata;
 
     public static final String PROVIDER_ID = "skss-scim2-storage";
+    public static final String ALLOW_SELF_SIGNED = "allowSelfSigned";
 
     static {
         configMetadata = ProviderConfigurationBuilder.create()
@@ -66,6 +67,15 @@ public class SkssStorageProviderFactory implements UserStorageProviderFactory<Sk
                 .type(ProviderConfigProperty.STRING_TYPE)
                 .label("Client Secret")
                 .helpText("Client secret to access the scim resources")
+                .add()
+
+                .property()
+                .name(ALLOW_SELF_SIGNED)
+                .type(ProviderConfigProperty.BOOLEAN_TYPE)
+                .label("Trust any TLS certificate")
+                .helpText("Skip TLS certificate and host name verification for the SCIM 2.0 url. "
+                        + "Only for test setups with self-signed certificates; never enable in production.")
+                .defaultValue(false)
                 .add()
 
                 .build();
