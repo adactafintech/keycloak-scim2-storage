@@ -18,13 +18,13 @@ mvn -B clean verify -Dkeycloak.version=26.5.6 -P run-integration-tests
 mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTests
 ```
 
-- Supported Keycloak versions: **24.0.4, 26.2.5, 26.5.6**. The single source of truth is the matrix in
-  `.github/workflows/build.yml`; the default `keycloak.version` in `pom.xml` is 26.5.6. Check every change
-  against all supported versions.
-- Use `-Dkeycloak.version=<version>`. The `keycloak-*` profiles in `pom.xml` (`keycloak-24`, `keycloak-26`,
-  `keycloak-26-5-6`, and `keycloak-X-Y-Z` for versions added later) are shortcuts for local builds; CI does not use them.
+- Supported Keycloak versions: read them from the `keycloak` matrix in `.github/workflows/build.yml`, the
+  single source of truth (do not copy the list into other docs). The default `keycloak.version` is set in
+  `pom.xml`. Check every change against all supported versions.
+- Use `-Dkeycloak.version=<version>`. The `keycloak-*` profiles in `pom.xml` are shortcuts for local builds;
+  CI does not use them.
 - To add a Keycloak version, run `java .github/scripts/KeycloakVersions.java add <version>`: it updates the
-  matrix, the `pom.xml` profile, the README table and the list above.
+  matrix, adds a `pom.xml` profile and a row to the README table.
 - Tests are **skipped by default**. The `run-integration-tests` profile enables them and runs them in the
   `integration-test` phase (after `package`), because `UserSyncTests` mounts
   `target/*-jar-with-dependencies.jar` into a real Keycloak container via Testcontainers. So use

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  *   java .github/scripts/KeycloakVersions.java list           prints the versions in the build.yml matrix, one per line
  *   java .github/scripts/KeycloakVersions.java add <version>  adds a version to the build.yml matrix (the single source
  *                                                             of truth), a keycloak-X-Y-Z profile to pom.xml for local
- *                                                             builds, a row to the README table and the AGENTS.md list
+ *                                                             builds and a row to the README table
  *
  * Fails (exit 1) when a file does not have the expected shape, so the workflow never opens a half-edited PR.
  */
@@ -24,7 +24,6 @@ public class KeycloakVersions {
     private static final Path BUILD_YML = Path.of(".github/workflows/build.yml");
     private static final Path POM = Path.of("pom.xml");
     private static final Path README = Path.of("README.md");
-    private static final Path AGENTS = Path.of("AGENTS.md");
 
     private static final Pattern VERSION = Pattern.compile("\\d+\\.\\d+\\.\\d+");
     private static final Pattern MATRIX_KEY = Pattern.compile("^(\\s*)keycloak:\\s*$");
@@ -54,7 +53,6 @@ public class KeycloakVersions {
         write(BUILD_YML, replaceMatrix(read(BUILD_YML), updated));
         write(POM, addProfile(read(POM), version));
         write(README, addReadmeRow(read(README), version));
-        write(AGENTS, replaceAgentsList(read(AGENTS), updated));
     }
 
     /** The items of the first "keycloak:" list in build.yml (the build matrix). */
@@ -139,19 +137,6 @@ public class KeycloakVersions {
             fail(README + ": no version in table row: " + row);
         }
         return m.group();
-    }
-
-    private static List<String> replaceAgentsList(List<String> lines, List<String> versions) {
-        String prefix = "- Supported Keycloak versions: **";
-        int i = indexOf(lines, l -> l.startsWith(prefix), AGENTS + ": no '" + prefix + "' line");
-        String line = lines.get(i);
-        int close = line.indexOf("**", prefix.length());
-        if (close < 0) {
-            fail(AGENTS + ": unterminated version list");
-        }
-        List<String> out = new ArrayList<>(lines);
-        out.set(i, prefix + String.join(", ", versions) + line.substring(close));
-        return out;
     }
 
     private static int indexOf(List<String> lines, java.util.function.Predicate<String> p, String error) {

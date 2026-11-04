@@ -1,5 +1,5 @@
 # Opens a PR that adds the latest stable Keycloak release to the supported versions
-# (the build.yml matrix, plus a pom.xml profile and the README/AGENTS.md lists), so CI tests it.
+# (the build.yml matrix, plus a pom.xml profile and a README table row), so CI tests it.
 #
 # The PR is opened with a GitHub App token: PRs opened with GITHUB_TOKEN do not trigger the CI workflow.
 # The App needs Contents, Pull requests and Workflows (because the PR edits build.yml) write access.
@@ -119,7 +119,7 @@ jobs:
 
           This PR adds it to the build matrix in \`.github/workflows/build.yml\`, so CI builds and tests the plugin against it, and adds:
           - a \`keycloak-${VERSION//./-}\` profile in \`pom.xml\` for local builds;
-          - a row in the README's supported versions table and the version in \`AGENTS.md\`.
+          - a row in the README's supported versions table.
 
           Supported versions after merge: $versions.
 
