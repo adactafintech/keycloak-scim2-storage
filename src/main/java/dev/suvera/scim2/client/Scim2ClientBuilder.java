@@ -24,9 +24,8 @@ import java.util.Base64;
 public class Scim2ClientBuilder {
     // The SCIM calls run synchronously inside Keycloak requests, so a server that is down must fail fast.
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
-    // Until the response headers arrive. Before, both timeouts were 1,200,000 seconds (about 14 days), most likely
-    // meant as milliseconds (20 minutes).
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(20);
+    // Until the response headers arrive. Before, both timeouts were 1,200,000 seconds (about 14 days).
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(100);
 
     private final String endPoint;
     private final HttpClient.Builder httpClientBuilder;
