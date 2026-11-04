@@ -42,16 +42,16 @@ To upgrade, replace the jar in `providers/` with the new one and repeat step 3.
 
 ## Configuration
 
-1. In the admin console, open the realm, go to **User federation** and add the
-   **skss-scim2-storage** provider.
+1. In the admin console, open the realm, go to **User federation** and choose
+   **Add Skss-scim2-storage providers**.
 
-   ![Adding the provider under User Federation](docs/images/scim2_storage_01.png)
+   ![The provider on the User federation page](docs/images/user-federation.png)
 
 2. Fill in the settings and save.
 
-   ![Provider settings](docs/images/scim2_storage_02.png)
+   ![Provider settings](docs/images/provider-settings.png)
 
-   The screenshots are from the older admin console. Today's form has these settings:
+   The plugin's settings:
 
    | Setting | Required | Description |
    |---|---|---|
@@ -64,15 +64,19 @@ To upgrade, replace the jar in `providers/` with the new one and repeat step 3.
    | Connect timeout (seconds) | | Default 10. See [Timeouts](#timeouts). |
    | Request timeout (seconds) | | Default 100. See [Timeouts](#timeouts). |
 
+   The form also has Keycloak's own User Federation settings (periodic sync, cache policy).
+
 3. To push changes made in Keycloak as they happen, add `scim-event-listener` under
-   **Realm settings → Events → Event listeners**.
+   **Realm settings → Events → Event listeners** and save.
+
+   ![The scim-event-listener event listener](docs/images/event-listeners.png)
 
 4. Create a user (or change one): it is provisioned to the SCIM server.
 
-   ![Adding a user](docs/images/scim2_storage_03.png)
-
 Existing users can be pushed with the provider's **Sync all users** and **Sync changed
-users** actions.
+users** actions, or periodically with the periodic sync settings.
+
+The screenshots are from Keycloak 26.5.6.
 
 ### TLS certificates of the SCIM server
 
