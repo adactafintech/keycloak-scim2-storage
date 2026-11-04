@@ -30,7 +30,7 @@
         <commons.coll.version>4.4</commons.coll.version>
         <commons.io.version>2.15.1</commons.io.version>
 
-        <jackson.version>2.17.0</jackson.version>
+        <jackson.version>2.18.11</jackson.version>
         <lombok.version>1.18.48</lombok.version>
 
         <validation-api.version>3.0.2</validation-api.version>
