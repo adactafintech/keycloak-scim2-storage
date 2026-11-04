@@ -25,7 +25,7 @@
         <!-- guava, commons-lang3, commons-io and commons-collections4 are provided by Keycloak (not bundled).
              Their versions here only affect compilation; keep them no newer than what the oldest supported
              Keycloak (24.0.4) ships, so no API is used that is missing at runtime. Guava: only long-stable APIs are used. -->
-        <guava.version>33.1.0-jre</guava.version>
+        <guava.version>33.7.1-jre</guava.version>
         <commons.lang.version>3.14.0</commons.lang.version>
         <commons.coll.version>4.4</commons.coll.version>
         <commons.io.version>2.15.1</commons.io.version>
