@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -101,6 +102,10 @@ public class ScimClient2 {
 
         Scim2ClientBuilder builder = new Scim2ClientBuilder(endPoint)
                 .allowSelfSigned(allowSelfSigned(componentModel))
+                .connectTimeout(timeout(componentModel, SkssStorageProviderFactory.CONNECT_TIMEOUT,
+                        Scim2ClientBuilder.DEFAULT_CONNECT_TIMEOUT))
+                .requestTimeout(timeout(componentModel, SkssStorageProviderFactory.REQUEST_TIMEOUT,
+                        Scim2ClientBuilder.DEFAULT_REQUEST_TIMEOUT))
                 .resourceTypes(resourceTypesJson)
                 .schemas(schemasJson)
                 .clientSecret(authorityUrl, username, password, clientId, clientSecret);
@@ -128,7 +133,19 @@ public class ScimClient2 {
         String clientId = componentModel.get("clientId");
         String clientSecret = componentModel.get("clientSecret");
 
-        return Objects.hash(endPoint, authorityUrl, username, password, clientId, clientSecret, allowSelfSigned(componentModel));
+        return Objects.hash(endPoint, authorityUrl, username, password, clientId, clientSecret, allowSelfSigned(componentModel),
+                componentModel.get(SkssStorageProviderFactory.CONNECT_TIMEOUT),
+                componentModel.get(SkssStorageProviderFactory.REQUEST_TIMEOUT));
+    }
+
+    /** Saving the provider rejects invalid values; one stored before that check existed falls back to the default. */
+    private static Duration timeout(ComponentModel componentModel, String name, Duration defaultValue) {
+        try {
+            return SkssStorageProviderFactory.timeout(componentModel, name, defaultValue);
+        } catch (IllegalArgumentException e) {
+            log.warn(e.getMessage() + "; using " + defaultValue.toSeconds() + " seconds");
+            return defaultValue;
+        }
     }
 
     /** Off unless explicitly enabled; providers created before this setting existed verify TLS. */

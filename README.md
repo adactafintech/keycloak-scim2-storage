@@ -56,6 +56,15 @@ Versions before this setting existed always skipped verification, so after
 upgrading, providers that talk to a self-signed SCIM server need one of the two
 options above.
 
+### Timeouts
+
+Two provider settings limit how long Keycloak waits for the SCIM server, in seconds:
+
+- **Connect timeout** (default 10): establishing the connection.
+- **Request timeout** (default 100): waiting for the answer to each SCIM request.
+
+Leave a field empty to use the default.
+
 ### Is your server is compliant to SCIM 2.0?
 
 Here is the tool to test the compliance level  https://github.com/suvera/scim2-compliance-test-utility

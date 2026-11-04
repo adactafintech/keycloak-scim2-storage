@@ -2,6 +2,7 @@ package dev.suvera.scim2.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -137,6 +138,28 @@ public class ScimHttpTransportTests {
 
         assertEquals("Bearer abc", authorizer.authorization(true));
         server.verify(request().withPath(tokenPath), VerificationTimes.exactly(2));
+    }
+
+    @Test
+    public void requestTimeoutAbortsASlowResponse() {
+        server.when(request().withPath("/slow"))
+                .respond(response().withStatusCode(200).withDelay(java.util.concurrent.TimeUnit.SECONDS, 5));
+        ScimHttpTransport transport = new Scim2ClientBuilder("http://localhost")
+                .requestTimeout(java.time.Duration.ofSeconds(1))
+                .buildTransport();
+
+        long start = System.nanoTime();
+        assertThrows(java.net.http.HttpTimeoutException.class, () -> transport.send(get("http", "localhost", "/slow")));
+        long seconds = java.time.Duration.ofNanos(System.nanoTime() - start).toSeconds();
+        assertTrue("took " + seconds + " s", seconds < 4);
+    }
+
+    @Test
+    public void timeoutsMustBePositive() {
+        Scim2ClientBuilder builder = new Scim2ClientBuilder("http://localhost");
+
+        assertThrows(IllegalArgumentException.class, () -> builder.connectTimeout(java.time.Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> builder.requestTimeout(java.time.Duration.ofSeconds(-1)));
     }
 
     @Test

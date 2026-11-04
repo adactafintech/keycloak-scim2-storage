@@ -22,8 +22,10 @@ import java.util.Base64;
  */
 @SuppressWarnings({"RedundantThrows", "unused"})
 public class Scim2ClientBuilder {
-    // Same values as the previous OkHttp client (connect and read timeouts).
-    private static final Duration TIMEOUT = Duration.ofSeconds(1200000);
+    // The SCIM calls run synchronously inside Keycloak requests, so a server that is down must fail fast.
+    public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    // Until the response headers arrive. Before, both timeouts were 1,200,000 seconds (about 14 days).
+    public static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(100);
 
     private final String endPoint;
     private final HttpClient.Builder httpClientBuilder;
@@ -31,13 +33,14 @@ public class Scim2ClientBuilder {
     private String spConfigJson;
     private String resourceTypesJson;
     private String schemasJson;
+    private Duration connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+    private Duration requestTimeout = DEFAULT_REQUEST_TIMEOUT;
 
     public Scim2ClientBuilder(String endPoint) {
         this.endPoint = endPoint;
         // HTTP/1.1 like before: avoids the h2c upgrade headers HttpClient sends on plain-HTTP URLs by default.
         this.httpClientBuilder = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(TIMEOUT);
+                .version(HttpClient.Version.HTTP_1_1);
     }
 
     public Scim2Client build() throws ScimException {
@@ -45,7 +48,26 @@ public class Scim2ClientBuilder {
     }
 
     ScimHttpTransport buildTransport() {
-        return new ScimHttpTransport(httpClientBuilder.build(), TIMEOUT, authorizer);
+        return new ScimHttpTransport(httpClientBuilder.connectTimeout(connectTimeout).build(), requestTimeout, authorizer);
+    }
+
+    /** How long to wait for the TCP (and TLS) connection to the SCIM server. */
+    public Scim2ClientBuilder connectTimeout(Duration timeout) {
+        this.connectTimeout = requirePositive(timeout);
+        return this;
+    }
+
+    /** How long to wait for the response headers of each SCIM request. */
+    public Scim2ClientBuilder requestTimeout(Duration timeout) {
+        this.requestTimeout = requirePositive(timeout);
+        return this;
+    }
+
+    private static Duration requirePositive(Duration timeout) {
+        if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+            throw new IllegalArgumentException("Timeout must be positive: " + timeout);
+        }
+        return timeout;
     }
 
     /**
