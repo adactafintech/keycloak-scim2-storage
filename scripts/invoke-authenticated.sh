@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Manual smoke test from the original upstream project (2020): gets an admin token with the
+# password grant, then calls the plugin's "sp-auth" realm REST endpoint (/realms/master/skss/sp-auth)
+# once without and once with the token, expecting 401 and then 201, and finally lists the
+# registered service providers.
+#
+# Kept for reference only: that endpoint was removed from the plugin in October 2020, and the
+# /auth URL prefix is from the WildFly-based Keycloak. It does not work with the current plugin.
+
 export DIRECT_GRANT_RESPONSE=$(curl -i --request POST http://localhost:8080/auth/realms/master/protocol/openid-connect/token --header "Accept: application/json" --header "Content-Type: application/x-www-form-urlencoded" --data "grant_type=password&username=admin&password=admin&client_id=admin-cli")
 
 echo -e "\n\nSENT RESOURCE-OWNER-PASSWORD-CREDENTIALS-REQUEST. OUTPUT IS:\n\n";
