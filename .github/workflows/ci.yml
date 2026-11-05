@@ -21,11 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
-
       - name: Check pom version against tags
         run: |
           version=$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('pom.xml').getroot().find('{http://maven.apache.org/POM/4.0.0}version').text.strip())")
@@ -34,9 +29,8 @@ jobs:
           # so they are left out of the "not lower than the highest tag" check.
           tags=$(git ls-remote --tags --refs origin | sed 's#.*refs/tags/##' | grep -v '^18\.0\.2-' || true)
 
-          # Compare as Maven versions (2.12 > 2.9) using Maven's own ComparableVersion.
-          maven_artifact=$(ls "$(mvn -v | sed -n 's/^Maven home: //p')"/lib/maven-artifact-*.jar)
-          if ! result=$(java -cp "$maven_artifact" .github/scripts/VersionCheck.java "$version" $tags); then
+          # Compare in version order (2.12 > 2.9).
+          if ! result=$(.github/scripts/version-check.sh "$version" $tags); then
             highest=${result#highest=}
             message="pom.xml version $version is lower than the highest existing tag $highest"
             echo "### :x: $message" >> "$GITHUB_STEP_SUMMARY"

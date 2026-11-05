@@ -23,7 +23,7 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
   `pom.xml`. Check every change against all supported versions.
 - Use `-Dkeycloak.version=<version>`. The `keycloak-*` profiles in `pom.xml` are shortcuts for local builds;
   CI does not use them.
-- To add a Keycloak version, run `java .github/scripts/KeycloakVersions.java add <version>`: it updates the
+- To add a Keycloak version, run `.github/scripts/keycloak-versions.sh add <version>`: it updates the
   matrix and adds a `pom.xml` profile.
 - Tests are **skipped by default**. The `run-integration-tests` profile enables them and runs them in the
   `integration-test` phase (after `package`), because `UserSyncTests` mounts
@@ -39,7 +39,7 @@ mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTes
 - `release.yml` (push to `master`): when the `pom.xml` version is not tagged yet, creates the tag and a GitHub
   Release with one jar per Keycloak version.
 - `keycloak-version-check.yml` (weekly and manual): when the latest stable Keycloak release is not in the
-  matrix yet, opens a PR that adds it (via `.github/scripts/KeycloakVersions.java`). It uses a GitHub App
+  matrix yet, opens a PR that adds it (via `.github/scripts/keycloak-versions.sh`). It uses a GitHub App
   token (secrets `KEYCLOAK_BOT_CLIENT_ID`, `KEYCLOAK_BOT_PRIVATE_KEY`) so that CI runs on the PR.
 - Dependabot (`.github/dependabot.yml`, weekly): one grouped PR for GitHub Actions, one for Maven minor and
   patch updates, one per Maven major update. It ignores `org.keycloak:*`, the Keycloak-provided libraries

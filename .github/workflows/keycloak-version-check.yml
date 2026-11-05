@@ -36,11 +36,6 @@ jobs:
           ref: master
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
-
       - name: Find the latest stable Keycloak release
         id: latest
         env:
@@ -73,7 +68,7 @@ jobs:
             exit 0
           }
 
-          supported=$(java .github/scripts/KeycloakVersions.java list)
+          supported=$(.github/scripts/keycloak-versions.sh list)
           if printf '%s\n' $supported | grep -qxF "$VERSION"; then
             skip "Keycloak $VERSION is already supported ($(echo $supported | tr ' ' ','))."
           fi
@@ -108,12 +103,12 @@ jobs:
           git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
 
           git switch -c "$BRANCH"
-          java .github/scripts/KeycloakVersions.java add "$VERSION"
+          .github/scripts/keycloak-versions.sh add "$VERSION"
           git commit -am "Add Keycloak $VERSION to the supported versions"
           # --force: a branch left over from an earlier, closed PR for this version is replaced.
           git push --force origin "$BRANCH"
 
-          versions=$(java .github/scripts/KeycloakVersions.java list | paste -sd, - | sed 's/,/, /g')
+          versions=$(.github/scripts/keycloak-versions.sh list | paste -sd, - | sed 's/,/, /g')
           cat > "$RUNNER_TEMP/body.md" <<EOF
           Keycloak [$VERSION](https://github.com/keycloak/keycloak/releases/tag/$VERSION) is the latest stable release and is not supported yet.
 
