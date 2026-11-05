@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.suvera.keycloak.scim2.storage.migration.GroupMigrationHandler;
+import dev.suvera.keycloak.scim2.storage.storage.ComponentModelUtils;
 import dev.suvera.keycloak.scim2.storage.storage.JobEnqueuer;
 
 public class ScimEventListener implements EventListenerProvider {
@@ -40,6 +41,9 @@ public class ScimEventListener implements EventListenerProvider {
     @Override
     public void onEvent(Event event) {
         MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
+        if (!isProvisioningEnabled(event.getRealmId())) {
+            return;
+        }
         if (event.getType() == EventType.UPDATE_PROFILE) {
             log.infof("Handling event: %s", event.getType());
             jobQueue.enqueueUserCreateJob(event.getRealmId(), event.getUserId());
@@ -49,6 +53,9 @@ public class ScimEventListener implements EventListenerProvider {
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
         MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
+        if (!isProvisioningEnabled(event.getRealmId())) {
+            return;
+        }
         ResourceType resourceType = event.getResourceType();
 
         if (resourceType == ResourceType.USER) {
@@ -227,6 +234,10 @@ public class ScimEventListener implements EventListenerProvider {
 
     private void logEventHandlingMessage(AdminEvent event) {
         log.debugf("Handling admin event: %s, %s", event.getResourceType(), event.getOperationType());
+    }
+
+    private boolean isProvisioningEnabled(String realmId) {
+        return ComponentModelUtils.hasEnabledScimComponent(session.realms().getRealm(realmId));
     }
 
     private String resolveRealmName(String realmId) {

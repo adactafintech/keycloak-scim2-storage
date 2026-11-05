@@ -12,6 +12,8 @@ import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.jpa.entities.ComponentEntity;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.storage.UserStorageProvider;
+import org.keycloak.storage.UserStorageProviderModel;
 
 import dev.suvera.keycloak.scim2.storage.ldap.LDAPEventMapperFactory;
 
@@ -40,5 +42,20 @@ public final class ComponentModelUtils {
     public static Stream<ComponentModel> getComponents(KeycloakSessionFactory factory, RealmModel realm, String providerId) {
         return getComponents(factory, realm.getName(), providerId)
         .map(c -> realm.getComponent(c.getId()));
+    }
+
+    /**
+     * Keycloak itself stops calling a disabled user storage provider, but the event listener and
+     * the job queue reach the SCIM endpoint on their own, so they have to check this explicitly.
+     */
+    public static boolean isEnabled(ComponentModel component) {
+        return component != null && new UserStorageProviderModel(component).isEnabled();
+    }
+
+    public static boolean hasEnabledScimComponent(RealmModel realm) {
+        return realm != null && realm
+            .getComponentsStream(realm.getId(), UserStorageProvider.class.getName())
+            .filter(c -> SkssStorageProviderFactory.PROVIDER_ID.equals(c.getProviderId()))
+            .anyMatch(ComponentModelUtils::isEnabled);
     }
 }
