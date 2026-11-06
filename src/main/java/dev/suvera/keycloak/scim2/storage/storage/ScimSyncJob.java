@@ -60,6 +60,20 @@ public class ScimSyncJob {
         jobModel.setJob(job);
         jobModel.getMissingKeycloakModelsFromSession(session);
 
+        if (jobModel.getRealm() == null) {
+            log.infof("Dropping SCIM sync job %s with action %s, realm %s no longer exists.",
+                job.getId(), job.getAction(), job.getRealmId());
+            queueManager.dequeueJob(job);
+            return;
+        }
+
+        if (isProvisioningDisabled(jobModel)) {
+            log.infof("Skipping SCIM sync job %s with action %s, the %s provider is disabled.",
+                job.getId(), job.getAction(), SkssStorageProviderFactory.PROVIDER_ID);
+            queueManager.dequeueJob(job);
+            return;
+        }
+
         try {
             log.infof("Executing SCIM sync job %s with action %s", job.getId(), job.getAction());
             executeJob(jobModel, result);
@@ -77,6 +91,17 @@ public class ScimSyncJob {
             queueManager.dequeueJob(job);
             log.info(e.getMessage(), e);
         }
+    }
+
+    private boolean isProvisioningDisabled(ScimSyncJobModel jobModel) {
+        // The job's own component is the user's federation link, which for users synced through
+        // an LDAP provider is the LDAP component and says nothing about SCIM.
+        ComponentModel component = jobModel.getComponent();
+        if (component != null && SkssStorageProviderFactory.PROVIDER_ID.equals(component.getProviderId())) {
+            return !ComponentModelUtils.isEnabled(component);
+        }
+
+        return !ComponentModelUtils.hasEnabledScimComponent(jobModel.getRealm());
     }
 
     private void executeJob(ScimSyncJobModel jobModel, SynchronizationResult result) throws ScimException, SyncException {
