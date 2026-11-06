@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch updates in one PR; major updates get a PR each.
+      maven-minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # Keycloak versions are managed deliberately through the supported versions list in
+      # .github/workflows/build.yml (see keycloak-version-check.yml).
+      - dependency-name: 'org.keycloak:*'
+      # Provided by Keycloak at runtime. The versions only affect compilation and are kept no newer
+      # than what the oldest supported Keycloak ships (see the comment in pom.xml).
+      - dependency-name: 'com.google.guava:guava'
+      - dependency-name: 'org.apache.commons:commons-lang3'
+      - dependency-name: 'org.apache.commons:commons-collections4'
+      - dependency-name: 'commons-io:commons-io'
+      - dependency-name: 'com.fasterxml.jackson.core:*'
+      - dependency-name: 'org.jboss.logging:jboss-logging'
+      - dependency-name: 'com.fasterxml:classmate'
+      - dependency-name: 'jakarta.el:jakarta.el-api'
+      - dependency-name: 'jakarta.mail:jakarta.mail-api'
+      # 3.7.0+ bundles transitive copies of Keycloak-provided libraries (see the comment in pom.xml).
+      - dependency-name: 'org.apache.maven.plugins:maven-assembly-plugin'
+        versions: ['>= 3.7.0']
+      # Bundled: hibernate-validator 8.0.x implements Jakarta Validation 3.0 (validation-api 3.0.x);
+      # 9.x needs Jakarta Validation 3.1. Move both together, by hand.
+      - dependency-name: 'org.hibernate.validator:*'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'jakarta.validation:jakarta.validation-api'
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
