@@ -44,14 +44,14 @@ public final class ComponentModelUtils {
         .map(c -> realm.getComponent(c.getId()));
     }
 
-    /**
-     * Keycloak itself stops calling a disabled user storage provider, but the event listener and
-     * the job queue reach the SCIM endpoint on their own, so they have to check this explicitly.
-     */
     public static boolean isEnabled(ComponentModel component) {
         return component != null && new UserStorageProviderModel(component).isEnabled();
     }
 
+    /**
+     * Keycloak itself stops calling a disabled user storage provider, but the event listener and
+     * the job queue reach the SCIM endpoint on their own, so they have to check this explicitly.
+     */
     public static boolean hasEnabledScimComponent(RealmModel realm) {
         return realm != null && realm
             .getComponentsStream(realm.getId(), UserStorageProvider.class.getName())

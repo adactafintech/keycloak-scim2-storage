@@ -40,8 +40,10 @@ public class ScimEventListener implements EventListenerProvider {
 
     @Override
     public void onEvent(Event event) {
-        MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
-        if (!isProvisioningEnabled(event.getRealmId())) {
+        String realmId = event.getRealmId();
+        RealmModel realm = session.realms().getRealm(realmId);
+        MDC.put(MDC_REALM_KEY, resolveRealmName(realm, realmId));
+        if (!ComponentModelUtils.hasEnabledScimComponent(realm)) {
             return;
         }
         if (event.getType() == EventType.UPDATE_PROFILE) {
@@ -52,8 +54,10 @@ public class ScimEventListener implements EventListenerProvider {
 
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
-        MDC.put(MDC_REALM_KEY, resolveRealmName(event.getRealmId()));
-        if (!isProvisioningEnabled(event.getRealmId())) {
+        String realmId = event.getRealmId();
+        RealmModel realm = session.realms().getRealm(realmId);
+        MDC.put(MDC_REALM_KEY, resolveRealmName(realm, realmId));
+        if (!ComponentModelUtils.hasEnabledScimComponent(realm)) {
             return;
         }
         ResourceType resourceType = event.getResourceType();
@@ -236,12 +240,7 @@ public class ScimEventListener implements EventListenerProvider {
         log.debugf("Handling admin event: %s, %s", event.getResourceType(), event.getOperationType());
     }
 
-    private boolean isProvisioningEnabled(String realmId) {
-        return ComponentModelUtils.hasEnabledScimComponent(session.realms().getRealm(realmId));
-    }
-
-    private String resolveRealmName(String realmId) {
-        RealmModel realm = session.realms().getRealm(realmId);
+    private static String resolveRealmName(RealmModel realm, String realmId) {
         return realm != null ? realm.getName() : realmId;
     }
 }
