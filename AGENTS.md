@@ -8,18 +8,18 @@ These are the commands CI runs (`.github/workflows/build.yml`), once per support
 
 ```bash
 # Build the deployable jar for one Keycloak version (tests are skipped by default)
-mvn -B clean package -Dkeycloak.version=26.5.6
-# Output: target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
+mvn -B clean package -Dkeycloak.version=26.8.2
+# Output: target/scim2-provisioning-keycloak-26.8.2-jar-with-dependencies.jar
 
 # Build and run all tests (unit + integration) against one Keycloak version; requires Docker
-mvn -B clean verify -Dkeycloak.version=26.5.6 -P run-integration-tests
+mvn -B clean verify -Dkeycloak.version=26.8.2 -P run-integration-tests
 
 # Run a single test class
-mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTests
+mvn verify -Dkeycloak.version=26.8.2 -P run-integration-tests -Dtest=UserSyncTests
 ```
 
-- Supported Keycloak versions: **24.0.4, 26.2.5, 26.5.6**. The single source of truth is the matrix in
-  `.github/workflows/build.yml`; the default `keycloak.version` in `pom.xml` is 26.5.6. Check every change
+- Supported Keycloak versions: **24.0.4, 26.2.5, 26.5.6, 26.8.2**. The single source of truth is the matrix in
+  `.github/workflows/build.yml`; the default `keycloak.version` in `pom.xml` is 26.8.2. Check every change
   against all supported versions.
 - Use `-Dkeycloak.version=<version>`. The old `keycloak-24` / `keycloak-26` / `keycloak-26-5-6` profiles
   still exist but CI does not use them.
