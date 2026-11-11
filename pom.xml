@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.adacta.keycloak</groupId>
     <artifactId>scim2-provisioning</artifactId>
-    <version>3.0</version>
+    <version>3.2</version>
     <packaging>jar</packaging>
     <description>Keycloak SCIM2 Outbound User Provisioning</description>
 
@@ -17,10 +17,10 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
 
-        <keycloak.version>26.5.6</keycloak.version>
+        <keycloak.version>26.8.2</keycloak.version>
 
-        <version.keycloak.client>26.0.4</version.keycloak.client>
-        <version.resteasy>6.2.10.Final</version.resteasy>
+        <version.keycloak.client>26.0.12</version.keycloak.client>
+        <version.resteasy>6.2.15.Final</version.resteasy>
 
         <!-- guava, commons-lang3, commons-io and commons-collections4 are provided by Keycloak (not bundled).
              Their versions here only affect compilation; keep them no newer than what the oldest supported

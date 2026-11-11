@@ -21,7 +21,7 @@ it has one jar for each supported Keycloak version.
 2. Copy it to the Keycloak providers directory:
 
    ```bash
-   cp scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar /opt/keycloak/providers/
+   cp scim2-provisioning-keycloak-26.8.2-jar-with-dependencies.jar /opt/keycloak/providers/
    ```
 
 3. Rebuild Keycloak and restart it:
@@ -106,17 +106,17 @@ Docker-compatible engine such as Podman), because they start a real Keycloak in 
 
 ```bash
 # Build the jar for one Keycloak version (tests are skipped by default)
-mvn clean package -Dkeycloak.version=26.5.6
-# -> target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
+mvn clean package -Dkeycloak.version=26.8.2
+# -> target/scim2-provisioning-keycloak-26.8.2-jar-with-dependencies.jar
 
 # Build and run all tests, including the integration tests, against that version
-mvn clean verify -Dkeycloak.version=26.5.6 -P run-integration-tests
+mvn clean verify -Dkeycloak.version=26.8.2 -P run-integration-tests
 
 # Run a single test class
-mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTests
+mvn verify -Dkeycloak.version=26.8.2 -P run-integration-tests -Dtest=UserSyncTests
 ```
 
-Without `-Dkeycloak.version`, the build uses the default from `pom.xml` (26.5.6).
+Without `-Dkeycloak.version`, the build uses the default from `pom.xml` (26.8.2).
 
 ## Releases
 

@@ -8,14 +8,14 @@ These are the commands CI runs (`.github/workflows/build.yml`), once per support
 
 ```bash
 # Build the deployable jar for one Keycloak version (tests are skipped by default)
-mvn -B clean package -Dkeycloak.version=26.5.6
-# Output: target/scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar
+mvn -B clean package -Dkeycloak.version=26.8.2
+# Output: target/scim2-provisioning-keycloak-26.8.2-jar-with-dependencies.jar
 
 # Build and run all tests (unit + integration) against one Keycloak version; requires Docker
-mvn -B clean verify -Dkeycloak.version=26.5.6 -P run-integration-tests
+mvn -B clean verify -Dkeycloak.version=26.8.2 -P run-integration-tests
 
 # Run a single test class
-mvn verify -Dkeycloak.version=26.5.6 -P run-integration-tests -Dtest=UserSyncTests
+mvn verify -Dkeycloak.version=26.8.2 -P run-integration-tests -Dtest=UserSyncTests
 ```
 
 - Supported Keycloak versions: read them from the `keycloak` matrix in `.github/workflows/build.yml`, the
