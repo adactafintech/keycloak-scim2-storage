@@ -7,15 +7,8 @@ the SCIM server through a job queue with retries.
 
 ## Supported Keycloak versions
 
-| Keycloak | Jar |
-|---|---|
-| 26.8.2 | `scim2-provisioning-keycloak-26.8.2-jar-with-dependencies.jar` |
-| 26.5.6 | `scim2-provisioning-keycloak-26.5.6-jar-with-dependencies.jar` |
-| 26.2.5 | `scim2-provisioning-keycloak-26.2.5-jar-with-dependencies.jar` |
-| 24.0.4 | `scim2-provisioning-keycloak-24.0.4-jar-with-dependencies.jar` |
-
-Use the jar built for your Keycloak version. The list of supported versions lives in
-[`.github/workflows/build.yml`](.github/workflows/build.yml); CI builds and tests every one.
+See the [latest release](https://github.com/adactafintech/keycloak-scim2-storage/releases/latest):
+it has one jar for each supported Keycloak version.
 
 ## Installation
 
@@ -130,6 +123,10 @@ Without `-Dkeycloak.version`, the build uses the default from `pom.xml` (26.8.2)
 A release is published when a merge to `master` changes the version in `pom.xml`
 to one that is not tagged yet. The release has one jar per supported Keycloak version.
 Pull requests show a "Release preview" check that says whether merging will publish one.
+
+Dependabot opens weekly PRs for Maven and GitHub Actions updates. A weekly workflow opens a
+PR that adds each new stable Keycloak release to the supported versions, so CI tests it
+before it is supported.
 
 ## Origin
 
